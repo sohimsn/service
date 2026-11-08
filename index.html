@@ -541,8 +541,19 @@
     <!-- ЧИСТАЯ И ИСПРАВЛЕННАЯ ЛОГИКА (JS) -->
     <!-- ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ЛОГИКА (JS) -->
     <script>
-        const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-        if (tg) tg.expand();
+                // Инициализация Telegram WebApp
+        const tg = window.Telegram ? window.Telegram.WebApp : null;
+        
+        if (tg) {
+            tg.ready();
+            tg.expand(); // Первая попытка при старте
+            
+            // ЖЕЛЕЗОБЕТОННО: Если iOS заблокировал старт, раскрываем шторку при первом же тапе в любую точку экрана!
+            document.addEventListener('touchstart', function() {
+                tg.expand();
+            }, { once: true }); // triggered только один раз
+        }
+
 
         function triggerHaptic() {
             if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
@@ -759,13 +770,25 @@
             btn.innerText = `Купить буст за ${totalCost} ₽`;
         }
 
-        function switchTab(tabName) {
+        function switchTab(tabId) {
             triggerHaptic();
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById('tab-' + tabName).classList.add('active');
-            event.currentTarget.classList.add('active');
+            
+            // ИСПРАВЛЕНО: Принудительно раскрываем Mini App на весь экран при смене вкладки!
+            if (tg && tg.expand) tg.expand();
+
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            const activeBtn = document.querySelector(`[onclick="switchTab('${tabId}')"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            const activeContent = document.getElementById(tabId);
+            if (activeContent) activeContent.classList.add('active');
+
+            state.currentTab = tabId;
+            calculatePrice();
         }
+
                 // ФУНКЦИИ УПРАВЛЕНИЯ ШТОРКОЙ ЗАКАЗА
         function openOrderModal() {
             const tg = window.Telegram ? window.Telegram.WebApp : null;
