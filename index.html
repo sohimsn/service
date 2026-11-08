@@ -61,25 +61,30 @@
         .container { 
             padding: 20px; 
             z-index: 1; 
-            flex-grow: 1; 
             display: flex; 
             flex-direction: column; 
-            /* ИСПРАВЛЕНО: Заставляем контейнер растягиваться на всю доступную высоту */
-            height: calc(100% - 60px); 
+            
+            /* ИСПРАВЛЕНО: Убираем жёсткие calc-вычисления высоты */
+            flex-grow: 1; 
             box-sizing: border-box;
+            
+            /* МАГИЯ: Автоматически распределяет контент по вертикали, выталкивая кнопку вниз */
+            justify-content: space-between; 
         }
+
 
         .tab-content { 
             display: none; 
             flex-direction: column; 
-            gap: 16px; 
-            /* ИСПРАВЛЕНО: Растягиваем контент таба по вертикали */
+            
+            /* ИСПРАВЛЕНО: Заставляем табы распределять внутренние карточки рангов и кнопку */
+            justify-content: space-between;
             flex-grow: 1; 
-            height: 100%;
         }
         .tab-content.active { 
             display: flex; 
         }
+
 
 
         /* КАРТОЧКИ КАЛЬКУЛЯТОРА */
