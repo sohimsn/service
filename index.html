@@ -63,27 +63,32 @@
             z-index: 1; 
             display: flex; 
             flex-direction: column; 
-            
-            /* ИСПРАВЛЕНО: Убираем жёсткие calc-вычисления высоты */
-            flex-grow: 1; 
             box-sizing: border-box;
             
-            /* МАГИЯ: Автоматически распределяет контент по вертикали, выталкивая кнопку вниз */
-            justify-content: space-between; 
+            /* ИСПРАВЛЕНО: Элементы больше не разлетаются по экрану, а сидят плотной кучкой сверху вниз */
+            justify-content: flex-start; 
+            gap: 14px;
+            
+            /* Даём приложению дышать без жёсткого растягивания */
+            min-height: auto !important;
+            height: auto !important;
         }
+
 
 
         .tab-content { 
             display: none; 
             flex-direction: column; 
             
-            /* ИСПРАВЛЕНО: Заставляем табы распределять внутренние карточки рангов и кнопку */
-            justify-content: space-between;
-            flex-grow: 1; 
+            /* ИСПРАВЛЕНО: Вкладка просто идёт по порядку, не пытаясь распихать ранги по краям */
+            justify-content: flex-start;
+            gap: 14px; 
+            width: 100%;
         }
         .tab-content.active { 
             display: flex; 
         }
+
 
 
 
