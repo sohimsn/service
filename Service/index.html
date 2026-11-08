@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MLBB Boosting Service</title>
+    <!-- Официальный скрипт Telegram (загружается в фоне) -->
+    <script src="https://telegram.org" defer></script>
+    
+    <style>
+        /* БЛОК СТИЛЕЙ (CSS) */
+        body {
+            margin: 0; padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0b0e14; color: #ffffff;
+            user-select: none; overflow-x: hidden;
+            display: flex; justify-content: center; min-height: 100vh;
+        }
+
+        .app-wrapper {
+            width: 100%; max-width: 450px;
+            background: radial-gradient(circle at top, #141b29 0%, #0b0e14 100%);
+            min-height: 100vh; display: flex; flex-direction: column; position: relative;
+        }
+
+        /* НАВИГАЦИЯ ТАБОВ */
+        .tabs {
+            display: flex; justify-content: space-around;
+            background: rgba(15, 23, 36, 0.85); backdrop-filter: blur(12px);
+            padding: 12px; border-bottom: 1px solid rgba(212, 175, 55, 0.15); z-index: 10;
+        }
+
+        .tab-btn {
+            background: none; border: none; color: #7e94b3;
+            font-size: 14px; font-weight: 700; padding: 10px 18px;
+            cursor: pointer; transition: all 0.3s ease; border-radius: 10px;
+        }
+
+        .tab-btn.active {
+            color: #d4af37; background: rgba(212, 175, 55, 0.08);
+            box-shadow: inset 0 0 12px rgba(212, 175, 55, 0.15);
+        }
+
+        .container { padding: 20px; z-index: 1; flex-grow: 1; display: flex; flex-direction: column; }
+        .tab-content { display: none; flex-direction: column; gap: 16px; }
+        .tab-content.active { display: flex; }
+
+        /* КАРТОЧКИ КАЛЬКУЛЯТОРА */
+        .calculator-box {
+            background: rgba(18, 26, 41, 0.65); border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 20px; padding: 22px; text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px);
+        }
+
+        .box-title {
+            color: #6c84a6; font-size: 12px; text-transform: uppercase;
+            letter-spacing: 1.5px; margin-top: 0; margin-bottom: 15px;
+        }
+
+        .slider { display: flex; align-items: center; justify-content: space-between; margin: 15px 0; }
+        
+        .slider-arrow {
+            background: none; border: none; color: rgba(212, 175, 55, 0.8);
+            font-size: 26px; cursor: pointer; padding: 12px; outline: none;
+        }
+        .slider-arrow:active { transform: scale(0.8); }
+
+        .rank-text { font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px; }
+
+        /* ЗВЕЗДЫ */
+        .stars-container {
+            display: flex; justify-content: center; gap: 10px;
+            margin-top: 15px; min-height: 38px; align-items: center;
+        }
+
+        .star {
+            font-size: 34px; color: rgba(255, 255, 255, 0.16);
+            cursor: pointer; transition: all 0.2s ease; display: inline-block;
+        }
+
+        .star.active {
+            color: #d4af37;
+            text-shadow: 0 0 12px rgba(212, 175, 55, 0.8), 0 0 20px rgba(212, 175, 55, 0.4);
+            transform: scale(1.15);
+        }
+
+        .flow-arrow { text-align: center; font-size: 22px; color: rgba(108, 132, 166, 0.4); margin: -4px 0; }
+
+        /* ЗОЛОТАЯ КНОПКА */
+        .action-btn {
+            width: 100%; background: linear-gradient(135deg, #d4af37 0%, #a67c1e 100%);
+            border: none; border-radius: 16px; color: #0b0e14; font-size: 16px; font-weight: 800;
+            padding: 18px; cursor: pointer; box-shadow: 0 6px 25px rgba(212, 175, 55, 0.25); margin-top: auto;
+        }
+        .action-btn:active { transform: scale(0.97); }
+
+                /* ТЕМНЫЙ ФОН НА ВЕСЬ ЭКРАН С БЛЁРОМ */
+        /* ТЕМНЫЙ ФОН ПРИ ОТКРЫТИИ ОКНА */
+        .modal-overlay {
+            position: fixed !important;
+            /* Жестко прибиваем к левому верхнему углу самого экрана */
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(6px);
+            z-index: 88888 !important;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto !important;
+        }
+
+
+        /* МОДАЛЬНОЕ ОКНО ЧЕТКО ПО ЦЕНТРУ */
+        /* ЦЕНТРАЛЬНОЕ МОДАЛЬНОЕ ОКНО */
+                /* ЦЕНТРАЛЬНОЕ МОДАЛЬНОЕ ОКНО */
+        .center-modal {
+            position: fixed !important; /* Привязка к экрану */
+            top: 50% !important; left: 50% !important;
+            transform: translate(-50%, -50%) scale(1) !important; 
+            
+            /* ЖЕЛЕЗОБЕТОННО ДЛЯ КРЕСТИКА: Создаем точку отсчета координат внутри окна */
+            position: relative !important; 
+            
+            width: 90%;
+            max-width: 380px;
+            background: #121a29;
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            border-radius: 20px;
+            padding: 24px;
+            box-sizing: border-box;
+            z-index: 99999 !important;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.9);
+        }
+
+        .center-modal.active {
+            opacity: 1;
+            pointer-events: auto !important;
+            transform: translate(-50%, -50%) scale(1) !important;
+        }
+
+
+        .modal-title { margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; text-align: center; }
+        .modal-subtitle { margin: 6px 0 20px 0; font-size: 14px; color: #d4af37; text-align: center; font-weight: 600; }
+
+        /* ИГРОВЫЕ ТЕМНЫЕ ИНПУТЫ */
+        .input-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; text-align: left; }
+        .input-label { font-size: 11px; color: #6c84a6; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        
+        .sheet-input {
+            background: rgba(0, 0, 0, 0.4) !important;
+            border: 1px solid rgba(212, 175, 55, 0.2) !important;
+            border-radius: 12px;
+            padding: 14px;
+            color: #ffffff !important;
+            font-size: 16px;
+            font-weight: 600;
+            outline: none;
+            box-sizing: border-box;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+        .sheet-input:focus {
+            border-color: #d4af37 !important;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.15);
+        }
+        .sheet-input::placeholder { color: rgba(138, 161, 199, 0.4); }
+        .sheet-input::-webkit-outer-spin-button, .sheet-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+
+        /* ДИЗАЙН ЗАГЛУШЕК */
+        .coming-soon-box, .global-preview-box {
+            background: rgba(18, 26, 41, 0.4); border: 1px dashed rgba(108, 132, 166, 0.2);
+            border-radius: 20px; padding: 50px 20px; text-align: center; margin-top: 20px;
+        }
+        .global-preview-box { border: 1px solid rgba(212, 175, 55, 0.25); position: relative; }
+        .global-badge { position: absolute; top: 18px; right: 18px; background: #ff3b30; color: white; font-size: 11px; font-weight: 800; padding: 5px 10px; border-radius: 6px; }
+        .global-hero-tag { margin-top: 30px; font-size: 14px; color: #d4af37; font-weight: 700; }
+        .coming-soon-icon { font-size: 52px; margin-bottom: 15px; }
+                /* СТИЛИ ДЛЯ ИГРОВЫХ 3D-КАРТИНОК */
+                /* СТИЛИ ДЛЯ ИГРОВЫХ 3D-КАРТИНОК */
+        .rank-image-render {
+            width: 110px;
+            height: 110px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 15px rgba(0, 162, 255, 0.25));
+            animation: popIn 0.2s ease;
+        }
+
+        
+        .rank-icon-placeholder {
+            min-height: 115px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.7); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Показываем только ЛЕВУЮ половину (Мифическая Честь) */
+        .show-honor { object-position: left !important; width: 220px !important; max-width: none !important; transform: translateX(25px); }
+        
+        /* Показываем только ПРАВУЮ половину (Мифическая Слава) */
+        .show-glory { object-position: right !important; width: 220px !important; max-width: none !important; transform: translateX(-25px); }
+       
+        /* КОНТЕЙНЕР БАРАБАНА С ЗАЩИТОЙ ОТ ШАТАНИЯ */
+        .mythic-picker-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-top: 15px;
+            /* Запрещаем телефону дергать интерфейс при скролле барабана */
+            overscroll-behavior: contain; 
+            touch-action: pan-y;
+        }
+
+        /* НАСТРОЙКА 3D-ПРОСТРАНСТВА ДЛЯ БАРАБАНА */
+        /* КОНТЕЙНЕР БАРАБАНА С ОПТИЧЕСКИМ ЭФФЕКТOМ IOS */
+        .wheel-picker-wrapper {
+            position: relative;
+            width: 80px;
+            height: 90px; /* Жестко 3 строки по 30px */
+            background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.5) 100%);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: inset 0 4px 12px rgba(0,0,0,0.6);
+        }
+
+        .wheel-picker {
+            width: 100%;
+            height: 100%;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        .wheel-picker::-webkit-scrollbar { display: none; }
+
+        /* ЭФФЕКТ СЖАТИЯ И ТЕНИ ДЛЯ БОКОВЫХ СТРОК */
+        .wheel-slot {
+            height: 30px;
+            line-height: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            color: rgba(108, 132, 166, 0.3); /* Тусклые боковые числа */
+            text-align: center;
+            scroll-snap-align: center;
+            scroll-snap-stop: always;
+            transform: scaleY(0.85); /* Оптическое сжатие к краям цилиндра */
+            transition: all 0.15s ease;
+        }
+
+        /* ЦЕНТРАЛЬНОЕ ЧИСЛО РАСПРЯМЛЯЕТСЯ И ГОРИТ ЗОЛОТОМ */
+        .wheel-slot.selected {
+            color: #d4af37 !important;
+            transform: scaleY(1) scaleX(1.2); /* Расширяется по центру */
+            font-size: 19px;
+            text-shadow: 0 0 12px rgba(212, 175, 55, 0.6);
+        }
+
+        /* ГЛЯНЦЕВЫЕ МАСКИ СВЕРХУ И СНИЗУ */
+        .wheel-shadow-top, .wheel-shadow-bottom {
+            position: absolute;
+            left: 0; width: 100%; height: 30px;
+            pointer-events: none; z-index: 10;
+        }
+        .wheel-shadow-top { 
+            top: 0; 
+            background: linear-gradient(to bottom, #121a29 60%, rgba(18,26,41,0.4) 100%); 
+            border-bottom: 1px solid rgba(212, 175, 55, 0.08);
+        }
+        .wheel-shadow-bottom { 
+            bottom: 0; 
+            background: linear-gradient(to top, #121a29 60%, rgba(18,26,41,0.4) 100%); 
+            border-top: 1px solid rgba(212, 175, 55, 0.08);
+        }
+
+
+        /* ТЕМНЫЙ ФОН ПРИ ОТКРЫТИИ ШТОРКИ */
+        /* ТЕМНЫЙ ФОН ПРИ ОТКРЫТИИ ОКНА */
+                /* ТЕМНЫЙ ФОН НА ВЕСЬ ЭКРАН (С ЗАЩИТОЙ ОТ КАРТОЧЕК) */
+                /* ТЕМНЫЙ ФОН ПРИ ОТКРЫТИИ ОКНА */
+                /* ТЕМНЫЙ ФОН ПРИ ОТКРЫТИИ ОКНА */
+                /* ГЛОБАЛЬНЫЙ ТЁМНЫЙ ФОН НА ВЕСЬ ЭКРАН */
+                /* ТЕМНЫЙ ФОН ПРИ ОТКРЫТИИ ОКНА */
+        .modal-overlay {
+            position: fixed !important;
+            /* ХАК: Растягиваем фон на гигантские размеры во все стороны */
+            top: -200vh !important;
+            left: -200vw !important;
+            width: 500vw !important;
+            height: 500vh !important;
+            
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(6px) !important;
+            -webkit-backdrop-filter: blur(6px) !important;
+            z-index: 999998 !important;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .modal-overlay.modal-visible {
+            opacity: 1;
+            pointer-events: auto !important;
+        }
+
+
+        /* ЦЕНТРАЛЬНОЕ МОДАЛЬНОЕ ОКНО */
+        .center-modal {
+            position: fixed !important;
+            top: 50vh !important; 
+            left: 50vw !important;
+            transform: translate(-50%, -50%) scale(0.9) !important; 
+            width: 90%;
+            max-width: 380px;
+            background: #121a29;
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            border-radius: 20px;
+            padding: 24px;
+            box-sizing: border-box;
+            z-index: 999999 !important;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.9);
+        }
+        .center-modal.modal-visible {
+            opacity: 1;
+            pointer-events: auto !important;
+            transform: translate(-50%, -50%) scale(1) !important;
+        }
+
+        .modal-title { margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; text-align: center; }
+        .modal-subtitle { margin: 6px 0 20px 0; font-size: 14px; color: #d4af37; text-align: center; font-weight: 600; }
+
+        /* ИГРОВЫЕ ТЕМНЫЕ ИНПУТЫ */
+        .input-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; text-align: left; }
+        .input-label { font-size: 11px; color: #6c84a6; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        
+        .sheet-input {
+            background: rgba(0, 0, 0, 0.4) !important;
+            border: 1px solid rgba(212, 175, 55, 0.2) !important;
+            border-radius: 12px;
+            padding: 14px;
+            color: #ffffff !important;
+            font-size: 16px;
+            font-weight: 600;
+            outline: none;
+            box-sizing: border-box;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+        .sheet-input:focus { border-color: #d4af37 !important; box-shadow: 0 0 10px rgba(212, 175, 55, 0.15); }
+        .sheet-input::placeholder { color: rgba(138, 161, 199, 0.4); }
+        .sheet-input::-webkit-outer-spin-button, .sheet-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+
+        .modal-title { margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; text-align: center; }
+        .modal-subtitle { margin: 6px 0 20px 0; font-size: 14px; color: #d4af37; text-align: center; font-weight: 600; }
+
+        /* ПОЛЯ ВВОДА (Убираем белый цвет браузера) */
+        .input-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; text-align: left; }
+        .input-label { font-size: 11px; color: #6c84a6; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        
+        .sheet-input {
+            background: rgba(0, 0, 0, 0.4) !important; /* Насильно делаем темным */
+            border: 1px solid rgba(212, 175, 55, 0.2) !important;
+            border-radius: 12px;
+            padding: 14px;
+            color: #ffffff !important;
+            font-size: 16px;
+            font-weight: 600;
+            outline: none;
+            box-sizing: border-box;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+        .sheet-input:focus { 
+            border-color: #d4af37 !important; 
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.15); 
+        }
+        .sheet-input::placeholder { color: rgba(138, 161, 199, 0.4); }
+        .sheet-input::-webkit-outer-spin-button, .sheet-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        /* КНОПКА КРЕСТИКА В ОКНЕ */
+                /* КНОПКА КРЕСТИКА В ОКНЕ */
+        .modal-close-btn {
+            position: absolute !important;
+            top: 15px !important; 
+            right: 15px !important;
+            background: none !important; 
+            border: none !important;
+            color: #6c84a6 !important; 
+            font-size: 26px !important; 
+            font-weight: bold !important;
+            cursor: pointer !important; 
+            line-height: 1 !important; 
+            z-index: 100001 !important;
+            outline: none !important;
+        }
+
+        .modal-close-btn:hover { color: #d4af37; }
+        .modal-close-btn:active { transform: scale(0.9); }
+
+
+    </style>
+</head>
+<body>
+
+    <div class="app-wrapper">
+        <!-- НАВИГАЦИЯ -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('rank')">🏆 Ранг</button>
+            <button class="tab-btn" onclick="switchTab('calibration')">🗺️ Калибровка</button>
+            <button class="tab-btn" onclick="switchTab('global')">👑 Глобал</button>
+        </div>
+
+        <div class="container">
+            <!-- ТАБ 1: КАЛЬКУЛЯТОР РАНГОВ -->
+            <div id="tab-rank" class="tab-content active">
+                
+                <!-- ТЕКУЩИЙ БЛОК -->
+                <div class="calculator-box">
+                    <h3 class="box-title">Текущий ранг</h3>
+                    <div class="slider">
+                        <button class="slider-arrow" onclick="changeRank('current', -1)">◀</button>
+                         <div class="rank-info" style="flex-direction: column;">
+                             <div id="current-icon" class="rank-icon-placeholder"></div>
+                             <div id="current-rank-text" class="rank-text">Эпик</div>
+                         </div>
+
+                        <button class="slider-arrow" onclick="changeRank('current', 1)">▶</button>
+                    </div>
+                    <div id="current-stars" class="stars-container"></div>
+                </div>
+
+                <div class="flow-arrow">▼</div>
+
+                <!-- ЖЕЛАЕМЫЙ БЛОК -->
+<div class="calculator-box">
+    <h3 class="box-title">Желаемый ранг</h3>
+    <div class="slider">
+        <button class="slider-arrow" onclick="changeRank('target', -1)">◀</button>
+        <div class="rank-info" style="flex-direction: column;">
+            <div id="target-icon" class="rank-icon-placeholder"></div>
+            <div id="target-rank-text" class="rank-text">Легенда</div>
+        </div>
+        <button class="slider-arrow" onclick="changeRank('target', 1)">▶</button>
+    </div>
+    <div id="target-stars" class="stars-container"></div>
+                    <!-- ВОЗВРАЩАЕМ ЗОЛОТУЮ КНОПКУ -->
+                <button id="action-button" class="action-btn" onclick="openOrderModal()">Рассчитать стоимость</button>
+
+
+                <!-- ТЕМНЫЙ ФОН-ЗАТЕМНЕНИЕ ПРИ ОТКРЫТИИ ШТОРКИ -->
+                <div id="modal-overlay" class="modal-overlay" onclick="closeOrderModal()"></div>
+
+                
+
+
+</div>
+
+
+            <!-- ТАБ 2: КАЛИБРОВКА -->
+            <div id="tab-calibration" class="tab-content">
+                <div class="coming-soon-box">
+                    <div class="coming-soon-icon">⏳</div>
+                    <h3>Калибровка скоро появится</h3>
+                    <p style="color:#7e94b3; font-size:14px;">Раздел находится в стадии настройки тарифов.</p>
+                </div>
+            </div>
+
+            <!-- ТАБ 3: ГЛОБАЛ -->
+            <div id="tab-global" class="tab-content">
+                <div class="global-preview-box">
+                    <div class="global-badge">UPDATING</div>
+                    <h3 style="letter-spacing: 0.5px; color:#ffffff;">РАЗДЕЛ «ГЛОБАЛ» В РАЗРАБОТКЕ</h3>
+                    <p style="color:#7e94b3; font-size:14px; line-height: 1.5;">Прокачка силы героев, поднятие винрейта и вывод в Топ-Мира станут доступны в ближайшее время.</p>
+                    <div class="global-hero-tag">🔥 Скоро: Буст на Fanny, Ling, Gusion</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- ЧИСТАЯ И ИСПРАВЛЕННАЯ ЛОГИКА (JS) -->
+    <!-- ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ЛОГИКА (JS) -->
+    <script>
+        const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+        if (tg) tg.expand();
+
+        function triggerHaptic() {
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        }
+
+        // Базовая сетка тарифов с твоими локальными картинками из папки img/
+        const RANKS = [
+            { name: "Воин", maxStars: 3, price: 40, icon: "img/warrior.webp" },
+            { name: "Элита", maxStars: 3, price: 40, icon: "img/elite.webp" },
+            { name: "Мастер", maxStars: 4, price: 40, icon: "img/master.webp" },
+            { name: "Грандмастер", maxStars: 4, price: 60, icon: "img/grandmaster.webp" },
+            { name: "Эпик", maxStars: 5, price: 90, icon: "img/epic.webp" },
+            { name: "Легенда", maxStars: 5, price: 120, icon: "img/legend.webp" },
+            { name: "Мифик", maxStars: 0, price: 160, icons: { base: "img/mythic.webp", honor: "img/honor.png", glory: "img/glory.png", immortal: "img/immortal.webp" } }
+        ];
+
+        let state = {
+            current: { index: 4, stars: 0, mythic: 1 },
+            target: { index: 5, stars: 0, mythic: 1 }
+        };
+
+        window.onload = function() {
+            updateUI('current');
+            updateUI('target');
+            calculatePrice();
+        };
+
+        function changeRank(type, direction) {
+            triggerHaptic();
+            let newIndex = state[type].index + direction;
+            if (newIndex >= 0 && newIndex < RANKS.length) {
+                state[type].index = newIndex;
+                state[type].stars = 0; 
+                updateUI(type);
+                calculatePrice();
+            }
+        }
+
+        function updateUI(type) {
+            const rankData = RANKS[state[type].index];
+            document.getElementById(`${type}-rank-text`).innerText = rankData.name;
+            
+            const iconContainer = document.getElementById(`${type}-icon`);
+            if (iconContainer) {
+                let currentIconPath = rankData.icon;
+                let extraClass = ''; 
+
+                if (rankData.maxStars === 0) {
+                    const stars = state[type].mythic;
+                    if (stars >= 100) {
+                        currentIconPath = rankData.icons.immortal;
+                        document.getElementById(`${type}-rank-text`).innerText = "М. Бессмертный";
+                    } else if (stars >= 50) {
+                        currentIconPath = rankData.icons.glory;
+                        extraClass = 'show-glory'; 
+                        document.getElementById(`${type}-rank-text`).innerText = "Мифическая Слава";
+                    } else if (stars >= 25) {
+                        currentIconPath = rankData.icons.honor;
+                        extraClass = 'show-honor'; 
+                        document.getElementById(`${type}-rank-text`).innerText = "Мифическая Честь";
+                    } else {
+                        currentIconPath = rankData.icons.base;
+                        document.getElementById(`${type}-rank-text`).innerText = "Мифик";
+                    }
+                }
+
+                iconContainer.innerHTML = `<img src="${currentIconPath}" alt="${rankData.name}" class="rank-image-render">`;
+            }
+            
+            renderStars(type, rankData.maxStars);
+        }
+
+        function renderStars(type, maxStars) {
+            const container = document.getElementById(`${type}-stars`);
+            container.innerHTML = '';
+
+            // Мифик: собираем барабан-крутилку iOS-style (исправлено s на s)
+            if (maxStars === 0) {
+                let slotsHtml = '<div class="wheel-picker-wrapper">';
+                slotsHtml += '<div class="wheel-shadow-top"></div>';
+                slotsHtml += `<div class="wheel-picker" id="${type}-wheel" onscroll="handleWheelScroll('${type}')">`;
+                
+                // Пустой верхний слот для разгона и центрирования единицы
+                slotsHtml += '<div class="wheel-slot"></div>';
+                
+                for (let s = 1; s <= 100; s++) {
+                    slotsHtml += `<div class="wheel-slot" data-value="${s}">${s}</div>`;
+                }
+                
+                // Пустой нижний слот для центрирования сотки
+                slotsHtml += '<div class="wheel-slot"></div>';
+                slotsHtml += '</div><div class="wheel-shadow-bottom"></div></div>';
+                slotsHtml += '<span style="color:#6c84a6; font-size:15px; font-weight:bold; margin-left:5px;">звезд</span>';
+                
+                container.className = "mythic-picker-container";
+                container.innerHTML = slotsHtml;
+
+                setTimeout(() => {
+                    const wheel = document.getElementById(`${type}-wheel`);
+                    if (wheel) {
+                        wheel.scrollTop = (state[type].mythic - 1) * 30;
+                        highlightWheelSlot(type, state[type].mythic);
+                    }
+                }, 10);
+
+                return;
+            }
+
+
+
+            container.className = "stars-container";
+            for (let i = 1; i <= maxStars; i++) {
+                const star = document.createElement('span');
+                star.className = 'star';
+                star.innerText = '★';
+                if (i <= state[type].stars) star.classList.add('active');
+                
+                star.onclick = () => {
+                    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+                    state[type].stars = i;
+                    renderStars(type, maxStars);
+                    calculatePrice();
+                };
+                container.appendChild(star);
+            }
+        }
+
+        function handleWheelScroll(type) {
+            const wheel = document.getElementById(`${type}-wheel`);
+            if (!wheel) return;
+
+            // Считаем активную строку строго по делению высоты слота (30px)
+            const newValue = Math.round(wheel.scrollTop / 30) + 1;
+            
+            if (newValue !== state[type].mythic && newValue >= 1 && newValue <= 100) {
+                const oldStars = state[type].mythic;
+                const getStage = (s) => (s >= 100 ? 3 : s >= 50 ? 2 : s >= 25 ? 1 : 0);
+                const oldStage = getStage(oldStars);
+
+                state[type].mythic = newValue;
+                triggerHaptic(); 
+                highlightWheelSlot(type, newValue);
+                
+                const newStage = getStage(newValue);
+                if (oldStage !== newStage) {
+                    updateUI(type); 
+                } else {
+                    calculatePrice(); 
+                }
+            }
+        }
+
+
+
+
+
+        function highlightWheelSlot(type, value) {
+            const wheel = document.getElementById(`${type}-wheel`);
+            if (!wheel) return;
+            
+            const slots = wheel.querySelectorAll('.wheel-slot');
+            slots.forEach(slot => {
+                if (parseInt(slot.getAttribute('data-value')) === value) {
+                    slot.classList.add('selected');
+                } else {
+                    slot.classList.remove('selected');
+                }
+            });
+        }
+
+        function calculatePrice() {
+            const btn = document.getElementById('action-button');
+
+            if (state.target.index < state.current.index) {
+                btn.innerText = "Выберите ранг выше текущего";
+                btn.disabled = true; btn.style.opacity = 0.5;
+                return;
+            }
+
+            btn.disabled = false; btn.style.opacity = 1;
+
+            let currentStars = 0;
+            for (let i = 0; i < state.current.index; i++) {
+                currentStars += RANKS[i].maxStars || 0;
+            }
+            currentStars += (RANKS[state.current.index].maxStars === 0) ? state.current.mythic : state.current.stars;
+
+            let targetStars = 0;
+            for (let i = 0; i < state.target.index; i++) {
+                targetStars += RANKS[i].maxStars || 0;
+            }
+            targetStars += (RANKS[state.target.index].maxStars === 0) ? state.target.mythic : state.target.stars;
+
+            if (targetStars <= currentStars) {
+                btn.innerText = "Выберите больше звезд";
+                btn.disabled = true; btn.style.opacity = 0.5;
+                return;
+            }
+
+            let totalCost = 0;
+            let temp = currentStars;
+            while (temp < targetStars) {
+                let check = 0;
+                let rankIdx = 0;
+                for (let i = 0; i < RANKS.length; i++) {
+                    let rStars = RANKS[i].maxStars || Infinity;
+                    if (temp < check + rStars) { rankIdx = i; break; }
+                    check += rStars;
+                }
+                totalCost += RANKS[rankIdx].price;
+                temp++;
+            }
+
+            btn.innerText = `Купить буст за ${totalCost} ₽`;
+        }
+
+        function switchTab(tabName) {
+            triggerHaptic();
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+                // ФУНКЦИИ УПРАВЛЕНИЯ ШТОРКОЙ ЗАКАЗА
+        function openOrderModal() {
+            const tg = window.Telegram ? window.Telegram.WebApp : null;
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+            
+            const overlay = document.getElementById('modal-overlay');
+            const modal = document.getElementById('order-modal');
+
+            // Собираем маршрут буста
+            const currentRankText = document.getElementById('current-rank-text').innerText;
+            const targetRankText = document.getElementById('target-rank-text').innerText;
+            
+            let currentDetail = currentRankText;
+            let targetDetail = targetRankText;
+            
+            if (RANKS[state.current.index].maxStars === 0) currentDetail += ` (${state.current.mythic}★)`;
+            if (RANKS[state.target.index].maxStars === 0) targetDetail += ` (${state.target.mythic}★)`;
+
+            document.getElementById('sheet-order-info').innerText = `${currentDetail} ➔ ${targetDetail}`;
+
+            // Вытаскиваем цену из большой кнопки калькулятора
+            const mainBtnText = document.getElementById('action-button').innerText;
+            const priceOnly = mainBtnText.replace("Купить буст за ", "").replace("Купить буст", "");
+            const modalPriceSpan = document.getElementById('modal-price-text');
+            if (modalPriceSpan) modalPriceSpan.innerText = priceOnly;
+
+            // Включаем отображение через наш чистый класс видимости
+            if (overlay) overlay.classList.add('modal-visible');
+            if (modal) modal.classList.add('modal-visible');
+            
+            // Сбрасываем инпуты при каждом новом открытии
+            document.getElementById('player-id').value = '';
+            document.getElementById('player-server').value = '';
+            document.getElementById('legal-agree').checked = false;
+            validateInputs();
+        }
+
+        function closeOrderModal() {
+            const tg = window.Telegram ? window.Telegram.WebApp : null;
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+            
+            const overlay = document.getElementById('modal-overlay');
+            const modal = document.getElementById('order-modal');
+            
+            if (overlay) overlay.classList.remove('modal-visible');
+            if (modal) modal.classList.remove('modal-visible');
+        }
+
+        function validateInputs() {
+            const idVal = document.getElementById('player-id').value;
+            const serverVal = document.getElementById('player-server').value;
+            const isAgreed = document.getElementById('legal-agree').checked;
+            const payBtn = document.getElementById('pay-button');
+
+            if (!payBtn) return;
+
+            // Кнопка оплаты включится, если введен ID (минимум 5 знаков), сервер (ровно 4 цифры) И стоит галочка согласия
+            if (idVal.length >= 5 && serverVal.length === 4 && isAgreed) {
+                payBtn.disabled = false;
+                payBtn.style.opacity = '1';
+            } else {
+                payBtn.disabled = true;
+                payBtn.style.opacity = '0.5';
+            }
+        }
+
+        function startPayment() {
+            const tg = window.Telegram ? window.Telegram.WebApp : null;
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            
+            // Сюда в следующем шаге добавим отправку данных администратору!
+            alert("Заказ сформирован! Подключаем платёжную систему...");
+        }
+
+
+
+
+
+
+
+
+
+
+        // ПРОВЕРКА ВВОДА: Финальная кнопка оплаты активируется, только когда введены ID и сервер
+        function validateInputs() {
+            const idVal = document.getElementById('player-id').value;
+            const serverVal = document.getElementById('player-server').value;
+            const payBtn = document.getElementById('pay-button');
+
+            // ID игрока должен быть длиннее 4 цифр, а сервер — строго 4 цифры
+            if (idVal.length > 4 && serverVal.length === 4) {
+                payBtn.disabled = false;
+                payBtn.style.opacity = 1;
+            } else {
+                payBtn.disabled = true;
+                payBtn.style.opacity = 0.5;
+            }
+        }
+
+        function startPayment() {
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+            alert("Инициализация оплаты... Перенаправление на платёжный шлюз!");
+        }
+
+    </script>
+    
+        <!-- ГЛОБАЛЬНЫЙ ТЁМНЫЙ ФОН НА ВЕСЬ ЭКРАН -->
+    <div id="modal-overlay" class="modal-overlay" onclick="closeOrderModal()"></div>
+
+    <!-- ОКНО СТРОГО ПО ЦЕНТРУ СТЕКЛА ЭКРАНА -->
+    <div id="order-modal" class="center-modal">
+        <!-- ШАПКА ОКНА С УДОБНЫМ КРЕСТИКОМ -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 class="modal-title" style="margin: 0; text-align: left;">Детали заказа</h3>
+            <button onclick="closeOrderModal()" style="background: none; border: none; color: #6c84a6; font-size: 26px; font-weight: bold; cursor: pointer; padding: 0; line-height: 1; outline: none; pointer-events: auto !important;">&times;</button>
+        </div>
+        
+        <p id="sheet-order-info" class="modal-subtitle" style="margin-top: -10px; margin-bottom: 20px;">Эпик ➔ Легенда</p>
+        
+        <div class="input-group">
+            <label class="input-label">Ваш ID игрока</label>
+            <input type="number" id="player-id" class="sheet-input" placeholder="Например: 12345678" oninput="validateInputs()">
+        </div>
+
+        <div class="input-group">
+            <label class="input-label">Сервер (4 цифры)</label>
+            <input type="number" id="player-server" class="sheet-input" placeholder="Например: 2044" oninput="validateInputs()">
+        </div>
+
+        <!-- СТРОКА СТОИМОСТИ -->
+        <div style="text-align: center; margin: 15px 0; font-size: 16px; font-weight: 700; color: #ffffff;">
+            Стоимость: <span id="modal-price-text" style="color: #d4af37; font-size: 18px; font-weight: 800;">0 ₽</span>
+        </div>
+
+        <!-- ГАЛОЧКА ЮРИДИЧЕСКОГО СОГЛАСИЯ -->
+        <div style="display: flex; align-items: flex-start; gap: 10px; margin: 15px 0 5px 0; text-align: left;">
+            <input type="checkbox" id="legal-agree" style="margin-top: 3px; cursor: pointer; accent-color: #d4af37;" onchange="validateInputs()">
+            <label for="legal-agree" style="font-size: 11px; color: #6c84a6; line-height: 1.4; cursor: pointer; user-select: none;">
+                Я подтверждаю согласие на обработку персональных данных и принимаю условия <a href="#" style="color: #d4af37; text-decoration: none; border-bottom: 1px dashed #d4af37;">Публичной оферты</a>
+            </label>
+        </div>
+
+        <!-- ЗОЛОТАЯ КНОПКА ПЕРЕХОДА К ОПЛАТЕ -->
+        <button id="pay-button" class="action-btn" style="margin-top: 15px;" disabled onclick="startPayment()">
+            Перейти к оплате
+        </button>
+    </div>
+
+
+
+
+</body>
+</html>
