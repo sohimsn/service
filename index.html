@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MLBB Boosting Service</title>
-    <!-- Официальный скрипт Telegram (загружается в фоне) -->
-    <script src="https://telegram.org" defer></script>
+        <!-- ОФИЦИАЛЬНЫЙ СУПЕР-СКРИПТ TELEGRAM MINI APPS -->
+    <script src="https://telegram.org"></script>
+
     
     <style>
         /* БЛОК СТИЛЕЙ (CSS) */
@@ -14,21 +15,37 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: #0b0e14; color: #ffffff;
             user-select: none; overflow-x: hidden;
-            display: flex; justify-content: center; min-height: 100vh;
+            display: flex; justify-content: center; 
+            min-height: 100vh;
         }
 
         .app-wrapper {
             width: 100%; max-width: 450px;
             background: radial-gradient(circle at top, #141b29 0%, #0b0e14 100%);
-            min-height: 100vh; display: flex; flex-direction: column; position: relative;
+            /* ИСПРАВЛЕНО: Даём свободно растягиваться и учитываем безопасный отступ снизу */
+            min-height: 100vh;
+            padding-bottom: env(safe-area-inset-bottom);
+            display: flex; flex-direction: column; position: relative;
+            box-sizing: border-box;
         }
 
+
+
         /* НАВИГАЦИЯ ТАБОВ */
+                /* НАВИГАЦИЯ ТАБОВ С ЗАЩИТОЙ ОТ ЧЁЛКИ IPHONE */
         .tabs {
             display: flex; justify-content: space-around;
             background: rgba(15, 23, 36, 0.85); backdrop-filter: blur(12px);
-            padding: 12px; border-bottom: 1px solid rgba(212, 175, 55, 0.15); z-index: 10;
+            
+            /* ИСПРАВЛЕНО: Добавляем встроенный системный отступ под чёлку смартфона */
+            padding-top: calc(12px + env(safe-area-inset-top)); 
+            padding-left: 12px;
+            padding-right: 12px;
+            padding-bottom: 12px;
+            
+            border-bottom: 1px solid rgba(212, 175, 55, 0.15); z-index: 10;
         }
+
 
         .tab-btn {
             background: none; border: none; color: #7e94b3;
@@ -41,9 +58,29 @@
             box-shadow: inset 0 0 12px rgba(212, 175, 55, 0.15);
         }
 
-        .container { padding: 20px; z-index: 1; flex-grow: 1; display: flex; flex-direction: column; }
-        .tab-content { display: none; flex-direction: column; gap: 16px; }
-        .tab-content.active { display: flex; }
+        .container { 
+            padding: 20px; 
+            z-index: 1; 
+            flex-grow: 1; 
+            display: flex; 
+            flex-direction: column; 
+            /* ИСПРАВЛЕНО: Заставляем контейнер растягиваться на всю доступную высоту */
+            height: calc(100% - 60px); 
+            box-sizing: border-box;
+        }
+
+        .tab-content { 
+            display: none; 
+            flex-direction: column; 
+            gap: 16px; 
+            /* ИСПРАВЛЕНО: Растягиваем контент таба по вертикали */
+            flex-grow: 1; 
+            height: 100%;
+        }
+        .tab-content.active { 
+            display: flex; 
+        }
+
 
         /* КАРТОЧКИ КАЛЬКУЛЯТОРА */
         .calculator-box {
