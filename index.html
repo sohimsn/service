@@ -22,12 +22,15 @@
         .app-wrapper {
             width: 100%; max-width: 450px;
             background: radial-gradient(circle at top, #141b29 0%, #0b0e14 100%);
-            /* ИСПРАВЛЕНО: Даём свободно растягиваться и учитываем безопасный отступ снизу */
             min-height: 100vh;
             padding-bottom: env(safe-area-inset-bottom);
             display: flex; flex-direction: column; position: relative;
             box-sizing: border-box;
+
+            /* ЖЕЛЕЗОБЕТОННО: Сдвигаем весь интерфейс вниз ровно под границы чёлки смартфона */
+            padding-top: env(safe-area-inset-top) !important; 
         }
+
 
 
 
