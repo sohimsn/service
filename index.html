@@ -282,13 +282,15 @@
         /* КОНТЕЙНЕР БАРАБАНА С ОПТИЧЕСКИМ ЭФФЕКТOМ IOS */
         .wheel-picker-wrapper {
             position: relative;
-            width: 80px;
-            height: 90px; /* Жестко 3 строки по 30px */
-            background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.5) 100%);
-            border: 1px solid rgba(212, 175, 55, 0.25);
-            border-radius: 12px;
+            width: 85px;
+            height: 150px; /* ИСПРАВЛЕНО: Расширяем высоту под 5 полноценных строк (5 x 30px) */
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 14px;
             overflow: hidden;
-            box-shadow: inset 0 4px 12px rgba(0,0,0,0.6);
+            box-shadow: inset 0 4px 20px rgba(0,0,0,0.8);
+            /* Включаем 3D-перспективу для всего барабана */
+            perspective: 1000px;
         }
 
         .wheel-picker {
@@ -300,6 +302,7 @@
             scrollbar-width: none;
             padding: 0;
             box-sizing: border-box;
+
         }
         .wheel-picker::-webkit-scrollbar { display: none; }
 
@@ -307,39 +310,43 @@
         .wheel-slot {
             height: 30px;
             line-height: 30px;
-            font-size: 16px;
-            font-weight: bold;
-            color: rgba(108, 132, 166, 0.3); /* Тусклые боковые числа */
+            font-size: 15px;
+            font-weight: 700;
+            color: rgba(108, 132, 166, 0.25); /* Полупрозрачные боковые числа */
             text-align: center;
             scroll-snap-align: center;
             scroll-snap-stop: always;
-            transform: scaleY(0.85); /* Оптическое сжатие к краям цилиндра */
-            transition: all 0.15s ease;
-        }
+        
 
+            transform-origin: center center -45px;
+            transform: rotateX(0deg) scale(0.9);
+            backface-visibility: hidden;
+            transition: all 0.2s cubic-bezier(0.1, 0.8, 0.25, 1);
+        }
         /* ЦЕНТРАЛЬНОЕ ЧИСЛО РАСПРЯМЛЯЕТСЯ И ГОРИТ ЗОЛОТОМ */
         .wheel-slot.selected {
             color: #d4af37 !important;
-            transform: scaleY(1) scaleX(1.2); /* Расширяется по центру */
-            font-size: 19px;
-            text-shadow: 0 0 12px rgba(212, 175, 55, 0.6);
+            font-size: 20px;
+            font-weight: 900;
+            transform: rotateX(0deg) scale(1.15) !important;
+            text-shadow: 0 0 15px rgba(212, 175, 55, 0.6);
         }
 
         /* ГЛЯНЦЕВЫЕ МАСКИ СВЕРХУ И СНИЗУ */
         .wheel-shadow-top, .wheel-shadow-bottom {
             position: absolute;
-            left: 0; width: 100%; height: 30px;
+            left: 0; width: 100%; height: 60px; /* ИСПРАВЛЕНО: Маска закрывает по 2 строки сверху и снизу */
             pointer-events: none; z-index: 10;
         }
         .wheel-shadow-top { 
             top: 0; 
-            background: linear-gradient(to bottom, #121a29 60%, rgba(18,26,41,0.4) 100%); 
-            border-bottom: 1px solid rgba(212, 175, 55, 0.08);
+            background: linear-gradient(to bottom, #121a29 20%, rgba(18,26,41,0.8) 60%, rgba(18,26,41,0) 100%); 
+            border-bottom: 1px solid rgba(212, 175, 55, 0.05);
         }
         .wheel-shadow-bottom { 
             bottom: 0; 
-            background: linear-gradient(to top, #121a29 60%, rgba(18,26,41,0.4) 100%); 
-            border-top: 1px solid rgba(212, 175, 55, 0.08);
+            background: linear-gradient(to top, #121a29 20%, rgba(18,26,41,0.8) 60%, rgba(18,26,41,0) 100%); 
+            border-top: 1px solid rgba(212, 175, 55, 0.05)
         }
 
 
@@ -690,22 +697,27 @@
             container.innerHTML = '';
 
             // Мифик: собираем барабан-крутилку iOS-style (исправлено s на s)
+            // Мифик: собираем барабан-крутилку iOS-style с соседними числами
             if (maxStars === 0) {
                 let slotsHtml = '<div class="wheel-picker-wrapper">';
                 slotsHtml += '<div class="wheel-shadow-top"></div>';
                 slotsHtml += `<div class="wheel-picker" id="${type}-wheel" onscroll="handleWheelScroll('${type}')">`;
                 
-                // Пустой верхний слот для разгона и центрирования единицы
+                // ИСПРАВЛЕНО: Два пустых слота сверху, чтобы числа 1 и 2 могли встать четко по центру барабана
+                slotsHtml += '<div class="wheel-slot"></div>';
                 slotsHtml += '<div class="wheel-slot"></div>';
                 
+                // Генерируем полноценный барабан от 1 до 100 звезд
                 for (let s = 1; s <= 100; s++) {
                     slotsHtml += `<div class="wheel-slot" data-value="${s}">${s}</div>`;
                 }
                 
-                // Пустой нижний слот для центрирования сотки
+                // ИСПРАВЛЕНО: Два пустых слота снизу для центрирования сотки
                 slotsHtml += '<div class="wheel-slot"></div>';
+                slotsHtml += '<div class="wheel-slot"></div>';
+                
                 slotsHtml += '</div><div class="wheel-shadow-bottom"></div></div>';
-                slotsHtml += '<span style="color:#6c84a6; font-size:15px; font-weight:bold; margin-left:5px;">звезд</span>';
+                slotsHtml += '<span style="color:#6c84a6; font-size:15px; font-weight:bold; margin-left:8px; line-height: 150px; height: 150px; display: inline-block; vertical-align: top;">звезд</span>';
                 
                 container.className = "mythic-picker-container";
                 container.innerHTML = slotsHtml;
@@ -713,13 +725,17 @@
                 setTimeout(() => {
                     const wheel = document.getElementById(`${type}-wheel`);
                     if (wheel) {
+                        // ИСПРАВЛЕНО: Сдвигаем начальный скролл с учетом новых центрирующих слотов
                         wheel.scrollTop = (state[type].mythic - 1) * 30;
-                        highlightWheelSlot(type, state[type].mythic);
+                        if (typeof highlightWheelSlot === 'function') {
+                            highlightWheelSlot(type, state[type].mythic);
+                        }
                     }
                 }, 10);
 
                 return;
             }
+
 
 
 
@@ -851,51 +867,69 @@
 
                 // ФУНКЦИИ УПРАВЛЕНИЯ ШТОРКОЙ ЗАКАЗА
         function openOrderModal() {
-            const tg = window.Telegram ? window.Telegram.WebApp : null;
             if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
             
             const overlay = document.getElementById('modal-overlay');
             const modal = document.getElementById('order-modal');
 
-            // Собираем маршрут буста
+            // БЕРЕМ НАДЁЖНО ПРЯМО С ЭКРАНА: Названия рангов и подрангов
             const currentRankText = document.getElementById('current-rank-text').innerText;
             const targetRankText = document.getElementById('target-rank-text').innerText;
             
             let currentDetail = currentRankText;
             let targetDetail = targetRankText;
-            
-            if (RANKS[state.current.index].maxStars === 0) currentDetail += ` (${state.current.mythic}★)`;
-            if (RANKS[state.target.index].maxStars === 0) targetDetail += ` (${state.target.mythic}★)`;
 
+            // Считаем звёзды для обычных рангов
+            const currentRank = RANKS[state.current.index];
+            const targetRank = RANKS[state.target.index];
+
+            if (currentRank.maxStars > 0) {
+                currentDetail += ` (${state.current.stars}★)`;
+            } else {
+                currentDetail += ` (${state.current.mythic}★)`;
+            }
+
+            if (targetRank.maxStars > 0) {
+                targetDetail += ` (${state.target.stars}★)`;
+            } else {
+                targetDetail += ` (${state.target.mythic}★)`;
+            }
+
+            // Записываем чистый и понятный маршрут бустерам
             document.getElementById('sheet-order-info').innerText = `${currentDetail} ➔ ${targetDetail}`;
 
-            // Вытаскиваем цену из большой кнопки калькулятора
+            // Вытаскиваем итоговую цену из главной золотой кнопки
             const mainBtnText = document.getElementById('action-button').innerText;
             const priceOnly = mainBtnText.replace("Купить буст за ", "").replace("Купить буст", "");
-            const modalPriceSpan = document.getElementById('modal-price-text');
-            if (modalPriceSpan) modalPriceSpan.innerText = priceOnly;
+            document.getElementById('modal-price-text').innerText = priceOnly;
 
-            // Включаем отображение через наш чистый класс видимости
-            if (overlay) overlay.classList.add('modal-visible');
-            if (modal) modal.classList.add('modal-visible');
+            // Открываем модальное окно заказа
+            if (overlay) overlay.classList.add('active');
+            if (modal) modal.classList.add('active');
             
-            // Сбрасываем инпуты при каждом новом открытии
+            // Сбрасываем поля анкеты для безопасности данных клиентов
             document.getElementById('player-id').value = '';
             document.getElementById('player-server').value = '';
+            document.getElementById('player-login').value = '';
+            document.getElementById('player-password').value = '';
+            document.getElementById('player-login-method').value = '';
             document.getElementById('legal-agree').checked = false;
             validateInputs();
         }
 
+
+
         function closeOrderModal() {
-            const tg = window.Telegram ? window.Telegram.WebApp : null;
             if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
             
             const overlay = document.getElementById('modal-overlay');
             const modal = document.getElementById('order-modal');
             
-            if (overlay) overlay.classList.remove('modal-visible');
-            if (modal) modal.classList.remove('modal-visible');
+            // ИСПРАВЛЕНО: Чётко снимаем класс active, чтобы шторка и фон плавно закрывались
+            if (overlay) overlay.classList.remove('active');
+            if (modal) modal.classList.remove('active');
         }
+
         
         function openLegalModal() {
             triggerHaptic();
