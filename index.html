@@ -971,12 +971,53 @@
         }
 
         function startPayment() {
-            const tg = window.Telegram ? window.Telegram.WebApp : null;
             if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             
-            // Сюда в следующем шаге добавим отправку данных администратору!
-            alert("Заказ сформирован! Подключаем платёжную систему...");
+            const payBtn = document.getElementById('pay-button');
+            if (payBtn) {
+                payBtn.disabled = true;
+                payBtn.innerText = "Отправка заказа...";
+                payBtn.style.opacity = '0.5';
+            }
+
+            // Собираем все данные из полей анкеты
+            const orderData = {
+                id: document.getElementById('player-id').value.trim(),
+                server: document.getElementById('player-server').value.trim(),
+                method: document.getElementById('player-login-method').value,
+                login: document.getElementById('player-login').value.trim(),
+                password: document.getElementById('player-password').value.trim(),
+                route: document.getElementById('sheet-order-info').innerText,
+                price: document.getElementById('modal-price-text').innerText
+            };
+
+            // Делаем POST-запрос на наш серверный скрипт Vercel
+            fetch('/api/send-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("🎉 Заказ успешно отправлен! Наш менеджер поддержки свяжется с вами в ближайшее время для подтверждения оплаты.");
+                    closeOrderModal();
+                } else {
+                    alert("❌ Ошибка при отправке заказа: " + data.error);
+                }
+            })
+            .catch(error => {
+                alert("❌ Ошибка сети: не удалось отправить заказ.");
+                console.error(error);
+            })
+            .finally(() => {
+                if (payBtn) {
+                    payBtn.innerText = "Перейти к оплате";
+                    validateInputs();
+                }
+            });
         }
+
 
 
 
