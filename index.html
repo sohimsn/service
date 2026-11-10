@@ -477,14 +477,15 @@
     <div class="app-wrapper">
         <!-- НАВИГАЦИЯ -->
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('rank')">🏆 Ранг</button>
-            <button class="tab-btn" onclick="switchTab('calibration')">🗺️ Калибровка</button>
-            <button class="tab-btn" onclick="switchTab('global')">👑 Глобал</button>
+            <button class="tab-btn active" onclick="switchTab('rank')">Ранг</button>
+            <button class="tab-btn" onclick="switchTab('tab-calibration')">Калибровка</button>
+            <button class="tab-btn" onclick="switchTab('tab-global')">Глобал</button>
         </div>
 
+
         <div class="container">
-            <!-- ТАБ 1: КАЛЬКУЛЯТОР РАНГОВ -->
-            <div id="tab-rank" class="tab-content active">
+            <!-- ТАБ 1: КАЛЬКУЛЯТОР РАНГОВ (ИСПРАВЛЕНО: id="rank", чтобы кнопка его видела) -->
+            <div id="rank" class="tab-content active">
                 
                 <!-- ТЕКУЩИЙ БЛОК -->
                 <div class="calculator-box">
@@ -495,7 +496,6 @@
                              <div id="current-icon" class="rank-icon-placeholder"></div>
                              <div id="current-rank-text" class="rank-text">Эпик</div>
                          </div>
-
                         <button class="slider-arrow" onclick="changeRank('current', 1)">▶</button>
                     </div>
                     <div id="current-stars" class="stars-container"></div>
@@ -504,50 +504,44 @@
                 <div class="flow-arrow">▼</div>
 
                 <!-- ЖЕЛАЕМЫЙ БЛОК -->
-<div class="calculator-box">
-    <h3 class="box-title">Желаемый ранг</h3>
-    <div class="slider">
-        <button class="slider-arrow" onclick="changeRank('target', -1)">◀</button>
-        <div class="rank-info" style="flex-direction: column;">
-            <div id="target-icon" class="rank-icon-placeholder"></div>
-            <div id="target-rank-text" class="rank-text">Легенда</div>
-        </div>
-        <button class="slider-arrow" onclick="changeRank('target', 1)">▶</button>
-    </div>
-    <div id="target-stars" class="stars-container"></div>
-                    <!-- ВОЗВРАЩАЕМ ЗОЛОТУЮ КНОПКУ -->
-                <button id="action-button" class="action-btn" onclick="openOrderModal()">Рассчитать стоимость</button>
+                <div class="calculator-box">
+                    <h3 class="box-title">Желаемый ранг</h3>
+                    <div class="slider">
+                        <button class="slider-arrow" onclick="changeRank('target', -1)">◀</button>
+                        <div class="rank-info" style="flex-direction: column;">
+                            <div id="target-icon" class="rank-icon-placeholder"></div>
+                            <div id="target-rank-text" class="rank-text">Легенда</div>
+                        </div>
+                        <button class="slider-arrow" onclick="changeRank('target', 1)">▶</button>
+                    </div>
+                    <div id="target-stars" class="stars-container"></div>
+                </div>
 
+                <!-- ЗОЛОТАЯ КНОПКА (ИСПРАВЛЕНО: вынесена из карточки ранга на свое место) -->
+                <button id="action-button" class="action-btn" style="margin-top: 10px;" onclick="openOrderModal()">Рассчитать стоимость</button>
+            </div> <!-- ЗАКРЫВАЕМ ТАБ 1 (Ранг) -->
 
-                <!-- ТЕМНЫЙ ФОН-ЗАТЕМНЕНИЕ ПРИ ОТКРЫТИИ ШТОРКИ -->
-                <div id="modal-overlay" class="modal-overlay" onclick="closeOrderModal()"></div>
-
-                
-
-
-</div>
-
-
-            <!-- ТАБ 2: КАЛИБРОВКА -->
+            <!-- ТАБ 2: КАЛИБРОВКА (Единый стиль плашки «В разработке») -->
             <div id="tab-calibration" class="tab-content">
-                <div class="coming-soon-box">
-                    <div class="coming-soon-icon">⏳</div>
-                    <h3>Калибровка скоро появится</h3>
-                    <p style="color:#7e94b3; font-size:14px;">Раздел находится в стадии настройки тарифов.</p>
+                <div class="calculator-box" style="padding: 40px 20px;">
+                    <div class="global-badge" style="background: rgba(212, 175, 55, 0.12); color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.3); font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 8px; display: inline-block; margin-bottom: 14px; letter-spacing: 1px; text-transform: uppercase;">В разработке</div>
+                    <h3 style="margin: 0 0 10px 0; color: #ffffff; font-size: 18px; font-weight: 800; letter-spacing: 0.5px;">Калибровка нового сезона</h3>
+                    <p style="color: #6c84a6; font-size: 14px; margin: 0; line-height: 1.5; font-weight: 600;">Раздел временно недоступен. Мы обновляем прайс-лист под актуальный патч игры. Совсем скоро здесь появится точный расчёт стоимости стартовых матчей.</p>
                 </div>
-            </div>
+            </div> <!-- ЗАКРЫВАЕМ ТАБ 2 -->
 
-            <!-- ТАБ 3: ГЛОБАЛ -->
+
+            <!-- ТАБ 3: ГЛОБАЛ (ИСПРАВЛЕНО: единый стиль калькулятора и честный текст) -->
             <div id="tab-global" class="tab-content">
-                <div class="global-preview-box">
-                    <div class="global-badge">UPDATING</div>
-                    <h3 style="letter-spacing: 0.5px; color:#ffffff;">РАЗДЕЛ «ГЛОБАЛ» В РАЗРАБОТКЕ</h3>
-                    <p style="color:#7e94b3; font-size:14px; line-height: 1.5;">Прокачка силы героев, поднятие винрейта и вывод в Топ-Мира станут доступны в ближайшее время.</p>
-                    <div class="global-hero-tag">🔥 Скоро: Буст на Fanny, Ling, Gusion</div>
+                <div class="calculator-box" style="padding: 40px 20px;">
+                    <div class="global-badge" style="background: rgba(212, 175, 55, 0.12); color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.3); font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 8px; display: inline-block; margin-bottom: 14px; letter-spacing: 1px; text-transform: uppercase;">В разработке</div>
+                    <h3 style="margin: 0 0 10px 0; color: #ffffff; font-size: 18px; font-weight: 800; letter-spacing: 0.5px;">Буст в Топ Мира и Сила Героев</h3>
+                    <p style="color: #6c84a6; font-size: 14px; margin: 0; line-height: 1.5; font-weight: 600;">Эксклюзивные заказы на получение локальных и глобальных титулов, а также поднятие винрейта на конкретных персонажах рассчитываются индивидуально через нашу поддержку.</p>
                 </div>
-            </div>
-        </div>
-    </div>
+            </div> <!-- ЗАКРЫВАЕМ ТАБ 3 -->
+
+        </div> <!-- ЗАКРЫВАЕМ .container -->
+
     <!-- ЧИСТАЯ И ИСПРАВЛЕННАЯ ЛОГИКА (JS) -->
     
 
@@ -633,6 +627,29 @@
                 calculatePrice();
             }
         }
+        
+        function switchTab(tabId) {
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+            if (tg && tg.expand) tg.expand();
+
+            // Скрываем все вкладки и тушим все кнопки
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            // Подсвечиваем кнопку, на которую нажали
+            const activeBtn = document.querySelector(`[onclick="switchTab('${tabId}')"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            // Показываем нужную вкладку
+            const activeContent = document.getElementById(tabId);
+            if (activeContent) activeContent.classList.add('active');
+
+            // Считаем цену только если вернулись на калькулятор рангов
+            if (tabId === 'rank') {
+                calculatePrice();
+            }
+        }
+
 
         function updateUI(type) {
             const rankData = RANKS[state[type].index];
@@ -814,8 +831,6 @@
 
         function switchTab(tabId) {
             triggerHaptic();
-            
-            // ИСПРАВЛЕНО: Принудительно раскрываем Mini App на весь экран при смене вкладки!
             if (tg && tg.expand) tg.expand();
 
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -827,9 +842,12 @@
             const activeContent = document.getElementById(tabId);
             if (activeContent) activeContent.classList.add('active');
 
-            state.currentTab = tabId;
-            calculatePrice();
+            // ИСПРАВЛЕНО ПО ПРЯМОЙ: считаем цену ТОЛЬКО если вернулись на вкладку калькулятора рангов
+            if (tabId === 'rank') {
+                calculatePrice();
+            }
         }
+
 
                 // ФУНКЦИИ УПРАВЛЕНИЯ ШТОРКОЙ ЗАКАЗА
         function openOrderModal() {
@@ -1050,6 +1068,6 @@
 
 
 
-
+    </script>
 </body>
 </html>
