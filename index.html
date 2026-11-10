@@ -296,7 +296,13 @@
         .wheel-picker {
             width: 100%;
             height: 100%;
+            /* ИСПРАВЛЕНО: Полностью отрезаем горизонтальный скролл и люфт по бокам */
+            overflow-x: hidden !important;
             overflow-y: scroll;
+    
+            /* ИСПРАВЛЕНО: Заставляем тачскрин телефона обрабатывать свайпы СТРОГО по вертикали (ось Y) */
+            touch-action: pan-y !important;
+    
             scroll-snap-type: y mandatory;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
@@ -312,12 +318,11 @@
             line-height: 30px;
             font-size: 15px;
             font-weight: 700;
-            color: rgba(108, 132, 166, 0.25); /* Полупрозрачные боковые числа */
+            /* ИСПРАВЛЕНО: Подняли яркость боковых чисел с 0.25 до 0.45 */
+            color: rgba(108, 132, 166, 0.45); 
             text-align: center;
             scroll-snap-align: center;
             scroll-snap-stop: always;
-        
-
             transform-origin: center center -45px;
             transform: rotateX(0deg) scale(0.9);
             backface-visibility: hidden;
@@ -340,13 +345,16 @@
         }
         .wheel-shadow-top { 
             top: 0; 
-            background: linear-gradient(to bottom, #121a29 20%, rgba(18,26,41,0.8) 60%, rgba(18,26,41,0) 100%); 
+            /* ИСПРАВЛЕНО: Сделали тень мягче к центру, чтобы числа просвечивали ярче */
+            background: linear-gradient(to bottom, #121a29 10%, rgba(18,26,41,0.6) 50%, rgba(18,26,41,0) 100%); 
             border-bottom: 1px solid rgba(212, 175, 55, 0.05);
+
         }
         .wheel-shadow-bottom { 
             bottom: 0; 
-            background: linear-gradient(to top, #121a29 20%, rgba(18,26,41,0.8) 60%, rgba(18,26,41,0) 100%); 
-            border-top: 1px solid rgba(212, 175, 55, 0.05)
+            /* ИСПРАВЛЕНО: Сделали тень мягче к центру */
+            background: linear-gradient(to top, #121a29 10%, rgba(18,26,41,0.6) 50%, rgba(18,26,41,0) 100%); 
+            border-top: 1px solid rgba(212, 175, 55, 0.05);
         }
 
 
