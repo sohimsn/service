@@ -1,10 +1,6 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "api/send-order.js", "use": "@vercel/node" }
-  ],
-  "routes": [
-    { "src": "/api/send-order", "dest": "api/send-order.js" },
-    { "src": "/(.*)", "dest": "/$1" }
+  "rewrites": [
+    { "source": "/api/send-order", "destination": "/api/send-order.js" }
   ]
 }
