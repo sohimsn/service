@@ -549,7 +549,39 @@
         </div>
     </div>
     <!-- ЧИСТАЯ И ИСПРАВЛЕННАЯ ЛОГИКА (JS) -->
-    <!-- ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ЛОГИКА (JS) -->
+    
+
+        <!-- ОТДЕЛЬНОЕ ОКНО ДЛЯ ПУБЛИЧНОЙ ОФЕРТЫ -->
+    <div id="legal-modal" class="center-modal" style="z-index: 9999999 !important; max-height: 80vh; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0;">
+            <h3 class="modal-title" style="margin: 0; text-align: left; font-size: 18px;">Публичная оферта</h3>
+            <button onclick="closeLegalModal()" style="background: none; border: none; color: #6c84a6; font-size: 26px; font-weight: bold; cursor: pointer; padding: 0; line-height: 1; outline: none; pointer-events: auto !important;">&times;</button>
+        </div>
+        
+        <div style="overflow-y: auto; flex-grow: 1; padding-right: 5px; font-size: 13px; color: #8aa1c7; line-height: 1.5; text-align: left; padding-bottom: 10px;">
+            <p style="margin-top: 0; color: #fff; font-weight: bold;">1. Общие положения и Договор-Оферта</p>
+            <p>Настоящий документ является официальным предложением (Публичной офертой) сервиса Ghost MLBB Boost, именуемого в дальнейшем «Исполнитель», и содержит все существенные условия по оказанию услуг по демонстрации игрового процесса и улучшению статистических показателей в игре Mobile Legends: Bang Bang для любого физического лица (в дальнейшем «Заказчик»).</p>
+            
+            <p style="color: #fff; font-weight: bold;">2. Момент акцепта и оплата</p>
+            <p>Заполнение анкеты в интерфейсе Mini App, нажатие кнопки «Перейти к оплате» и последующая 100% предоплата стоимости услуг являются полным и безоговорочным принятием (акцептом) условий настоящего Договора. Услуга считается оплаченной с момента поступления денежных средств на реквизиты Исполнителя.</p>
+            
+            <p style="color: #fff; font-weight: bold;">3. Порядок оказания услуг и фиксация результата</p>
+            <p>Заказчик обязуется предоставить корректные данные (ID, Сервер, Логин, Пароль) и находиться на связи для передачи кодов 2FA. Услуга считается оказанной в полном объёме и надлежащего качества в момент достижения целевого игрового ранга, выбранного в калькуляторе. Результат фиксируется внутренними скриншотами Исполнителя до и после выполнения работ.</p>
+            
+            <p style="color: #fff; font-weight: bold;">4. Запрет на стороннюю активность</p>
+            <p>Заказчику категорически запрещается совершать входы на игровой аккаунт во время выполнения работы бустером Исполнителя без предварительного согласования. В случае обнаружения одновременного входа или прерывания игровой сессии бустера, Исполнитель вправе расторгнуть Договор в одностороннем порядке, при этом уплаченные денежные средства возврату не подлежат и удерживаются в качестве штрафа за срыв выполнения заказа.</p>
+            
+            <p style="color: #fff; font-weight: bold;">5. Политика возврата средств</p>
+            <p>Если Заказчик решает отменить заказ до момента входа бустера на аккаунт, возвращается 100% стоимости. Если работа уже началась, возврат рассчитывается индивидуально, исходя из стоимости фактически выполненного объёма (набранных звёзд/рангов), за вычетом комиссии платёжного шлюза. Слив ранга по вине Заказчика (включая порчу кредитного счёта аккаунта) компенсации не подлежит.</p>
+            
+            <p style="color: #fff; font-weight: bold;">6. Ответственность и форс-мажор</p>
+            <p>Исполнитель гарантирует полную конфиденциальность данных авторизации и обязуется не передавать их третьим лицам. Исполнитель никогда не запрашивает коды для смены паролей или перепривязки почты. Исполнитель не несёт ответственности за любые санкции со стороны администрации игры (блокировки, предупреждения), так как Заказчик добровольно передаёт доступ к своему аккаунту и осознаёт все сопутствующие игровые риски.</p>
+        </div>
+        
+        <button class="action-btn" onclick="closeLegalModal()" style="padding: 12px; margin-top: 10px; font-size: 14px; flex-shrink: 0;">Понятно</button>
+    </div>
+
+    
     <script>
                 // Инициализация Telegram WebApp
         const tg = window.Telegram ? window.Telegram.WebApp : null;
@@ -846,6 +878,19 @@
             if (overlay) overlay.classList.remove('modal-visible');
             if (modal) modal.classList.remove('modal-visible');
         }
+        
+        function openLegalModal() {
+            triggerHaptic();
+            const modal = document.getElementById('legal-modal');
+            if (modal) modal.classList.add('active');
+        }
+
+        function closeLegalModal() {
+            triggerHaptic();
+            const modal = document.getElementById('legal-modal');
+            if (modal) modal.classList.remove('active');
+        }
+
 
         function validateInputs() {
             const idVal = document.getElementById('player-id').value;
@@ -990,7 +1035,9 @@
         <div style="display: flex; align-items: flex-start; gap: 10px; margin: 15px 0 5px 0; text-align: left;">
             <input type="checkbox" id="legal-agree" style="margin-top: 3px; cursor: pointer; accent-color: #d4af37;" onchange="validateInputs()">
             <label for="legal-agree" style="font-size: 11px; color: #6c84a6; line-height: 1.4; cursor: pointer; user-select: none;">
-                Я подтверждаю согласие на обработку персональных данных и принимаю условия Публичной оферты
+                Я подтверждаю согласие на обработку персональных данных и принимаю условия <a href="javascript:void(0)" onclick="openLegalModal()" style="color: #d4af37 !important; text-decoration: none; border-bottom: 1px dashed #d4af37 !important; pointer-events: auto !important; font-weight: 700;">Публичной оферты</a>
+
+
             </label>
         </div>
 
