@@ -1,7 +1,7 @@
 const https = require('https');
 
 const BOT_TOKEN = '9207077949:AAGH1qKVUPZf5s3rgOk0T-sDQhBXXUg3o4Y';
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyy1r4w3KroQjixKvGUGJ5wpxLnxw4RoAW2n3zzeiEDZwIkcVy5KtEv9_E9zy9BkiYf1g/exec';
+const GOOGLE_SCRIPT_URL = 'https://google.com';
 
 function tgRequest(method, payload) {
     return new Promise((resolve, reject) => {
@@ -60,11 +60,12 @@ function postToGoogleSheets(payload, targetUrl = GOOGLE_SCRIPT_URL, isRedirect =
     });
 }
 
-
 module.exports = async (req, res) => {
-    if (req.method !== 'POST') return res.status(200).send('OK');
+    if (req.method !== 'POST') {
+        return res.status(200).send('OK');
+    }
 
-        try {
+    try {
         const update = req.body;
         if (update && update.callback_query) {
             const cb = update.callback_query;
@@ -72,11 +73,6 @@ module.exports = async (req, res) => {
 
             if (data.startsWith('take_')) {
                 const orderNumber = data.replace('take_', '');
-                if (data.startsWith('take_')) {
-                const orderNumber = data.replace('take_', '');
-                await tgRequest('answerCallbackQuery', { callback_query_id: cb.id, text: '✅ Связь с Vercel есть! Заказ #' + orderNumber, show_alert: true });
-                return res.status(200).send('OK');
-
                 const boosterId = cb.from.id;
                 const boosterName = cb.from.username 
                     ? `@${cb.from.username}` 
@@ -146,7 +142,6 @@ module.exports = async (req, res) => {
             });
         }
     }
-
 
     return res.status(200).send('OK');
 };
