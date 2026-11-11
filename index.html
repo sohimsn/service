@@ -970,17 +970,63 @@
             }
         }
 
+                let compressedReceiptBase64 = "";
+
+        function handleReceiptUpload(input) {
+            const file = input.files;
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const maxWidth = 800;
+                    const scale = maxWidth / img.width;
+                    canvas.width = maxWidth;
+                    canvas.height = img.height * scale;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    compressedReceiptBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Шаг 1: Переход из анкеты в окно оплаты
         function startPayment() {
-            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-            
-            const payBtn = document.getElementById('pay-button');
-            if (payBtn) {
-                payBtn.disabled = true;
-                payBtn.innerText = "Отправка заказа...";
-                payBtn.style.opacity = '0.5';
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+            document.getElementById('order-modal').classList.remove('active');
+            document.getElementById('pay-modal-amount').innerText = document.getElementById('modal-price-text').innerText;
+            document.getElementById('receipt-file').value = '';
+            compressedReceiptBase64 = "";
+            document.getElementById('payment-modal').classList.add('active');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('payment-modal').classList.remove('active');
+            document.getElementById('modal-overlay').classList.remove('active');
+        }
+
+        function closeReceiptModal() {
+            document.getElementById('receipt-modal').classList.remove('active');
+            document.getElementById('modal-overlay').classList.remove('active');
+        }
+
+        // Шаг 2: Отправка заказа и чека после нажатия "Я оплатил"
+        function submitFullOrder() {
+            if (!compressedReceiptBase64) {
+                alert("⚠️ Пожалуйста, прикрепите скриншот чека об оплате!");
+                return;
             }
 
-            // Собираем все данные из полей анкеты
+            const btn = document.getElementById('confirm-pay-btn');
+            btn.disabled = true;
+            btn.innerText = "Проверяем и оформляем...";
+            btn.style.opacity = '0.5';
+
+            const clientUserId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : null;
+
             const orderData = {
                 id: document.getElementById('player-id').value.trim(),
                 server: document.getElementById('player-server').value.trim(),
@@ -988,35 +1034,37 @@
                 login: document.getElementById('player-login').value.trim(),
                 password: document.getElementById('player-password').value.trim(),
                 route: document.getElementById('sheet-order-info').innerText,
-                price: document.getElementById('modal-price-text').innerText
+                price: document.getElementById('modal-price-text').innerText,
+                receiptImage: compressedReceiptBase64,
+                clientUserId: clientUserId
             };
 
-            // Делаем POST-запрос на наш серверный скрипт Vercel
             fetch('/api/send-order', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(orderData)
             })
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    alert("🎉 Заказ успешно отправлен! Наш менеджер поддержки свяжется с вами в ближайшее время для подтверждения оплаты.");
-                    closeOrderModal();
+                    document.getElementById('payment-modal').classList.remove('active');
+                    document.getElementById('receipt-order-num').innerText = `#${data.orderNumber}`;
+                    document.getElementById('receipt-route').innerText = orderData.route;
+                    document.getElementById('receipt-price').innerText = orderData.price;
+                    document.getElementById('receipt-account').innerText = `${orderData.id} (${orderData.server})`;
+                    document.getElementById('receipt-modal').classList.add('active');
                 } else {
-                    alert("❌ Ошибка при отправке заказа: " + data.error);
+                    alert("❌ Ошибка оформления: " + data.error);
                 }
             })
-            .catch(error => {
-                alert("❌ Ошибка сети: не удалось отправить заказ.");
-                console.error(error);
-            })
+            .catch(() => alert("❌ Ошибка сети при отправке чека."))
             .finally(() => {
-                if (payBtn) {
-                    payBtn.innerText = "Перейти к оплате";
-                    validateInputs();
-                }
+                btn.disabled = false;
+                btn.innerText = "Я оплатил";
+                btn.style.opacity = '1';
             });
         }
+
 
 
 
@@ -1143,6 +1191,52 @@
         <!-- ЗОЛОТАЯ КНОПКА ПЕРЕХОДА К ОПЛАТЕ -->
         <button id="pay-button" class="action-btn" style="margin-top: 15px;" disabled onclick="startPayment()">
             Перейти к оплате
+        </button>
+    </div>
+    <!-- ОКНО ОПЛАТЫ -->
+    <div id="payment-modal" class="center-modal">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 class="modal-title" style="margin: 0; text-align: left;">Оплата заказа</h3>
+            <button onclick="closePaymentModal()" style="background: none; border: none; color: #6c84a6; font-size: 26px; font-weight: bold; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
+        </div>
+
+        <div style="background: rgba(212, 175, 55, 0.08); border: 1px solid rgba(212, 175, 55, 0.25); border-radius: 14px; padding: 14px; margin-bottom: 16px; text-align: left;">
+            <div style="font-size: 12px; color: #6c84a6; margin-bottom: 4px;">К оплате:</div>
+            <div id="pay-modal-amount" style="font-size: 22px; font-weight: 900; color: #d4af37; margin-bottom: 12px;">0 ₽</div>
+            
+            <div style="font-size: 12px; color: #6c84a6; margin-bottom: 4px;">Реквизиты для перевода (СБП / Карта):</div>
+            <div style="font-size: 15px; font-weight: 700; color: #ffffff; user-select: all;">+7 (999) 000-00-00 (Т-Банк)</div>
+            <div style="font-size: 11px; color: #8aa1c7; margin-top: 4px;">Нажмите на номер, чтобы скопировать</div>
+        </div>
+
+        <div class="input-group">
+            <label class="input-label">Прикрепите скриншот чека об оплате</label>
+            <input type="file" id="receipt-file" accept="image/*" class="sheet-input" style="padding: 10px; font-size: 13px;" onchange="handleReceiptUpload(this)">
+        </div>
+
+        <button id="confirm-pay-btn" class="action-btn" style="margin-top: 15px;" onclick="submitFullOrder()">
+            Я оплатил
+        </button>
+    </div>
+
+    <!-- ОКНО ЭЛЕКТРОННОГО ЧЕКА КЛИЕНТА -->
+    <div id="receipt-modal" class="center-modal">
+        <div style="text-align: center; margin-bottom: 15px;">
+            <div style="font-size: 38px; margin-bottom: 8px;">🧾</div>
+            <h3 class="modal-title" style="margin: 0; color: #d4af37;">Заказ оформлен!</h3>
+            <p style="font-size: 12px; color: #6c84a6; margin: 6px 0 0 0;">Сохраните скриншот этого чека для поддержки</p>
+        </div>
+
+        <div style="background: rgba(18, 26, 41, 0.9); border: 1px dashed rgba(212, 175, 55, 0.4); border-radius: 14px; padding: 16px; text-align: left; font-size: 13px; line-height: 1.7; color: #ffffff;">
+            <div>Номер чека: <strong id="receipt-order-num" style="color: #d4af37; font-size: 16px;">#1</strong></div>
+            <div>Услуга: <strong id="receipt-route">-</strong></div>
+            <div>Оплачено: <strong id="receipt-price" style="color: #d4af37;">-</strong></div>
+            <div>Аккаунт: <strong id="receipt-account">-</strong></div>
+            <div>Статус: <span style="color: #4ade80; font-weight: 700;">Передан бустерам</span></div>
+        </div>
+
+        <button class="action-btn" style="margin-top: 18px;" onclick="closeReceiptModal()">
+            Отлично, закрыть
         </button>
     </div>
 
