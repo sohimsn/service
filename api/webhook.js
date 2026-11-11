@@ -1,12 +1,12 @@
 const https = require('https');
 
 const BOT_TOKEN = '9207077949:AAGH1qKVUPZf5s3rgOk0T-sDQhBXXUg3o4Y';
+const ADMIN_ID = '1482409914';
 // ВСТАВЬ СЮДА СВОЙ ПОЛНЫЙ URL ИЗ api/send-order.js (между кавычками):
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwb5Vmc1-O0rkLNCylyTrxbSPO5m1XyYh9UUe1jwHMUs2eW9KMzWEiU0bkenWJY5Lb6eQ/exec';
 
-
 function tgRequest(method, payload) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const postData = JSON.stringify(payload);
         const options = {
             hostname: 'api.telegram.org',
@@ -23,10 +23,10 @@ function tgRequest(method, payload) {
             let body = '';
             res.on('data', (chunk) => { body += chunk; });
             res.on('end', () => {
-                try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
+                try { resolve(JSON.parse(body)); } catch (e) { resolve({ ok: false, error: body }); }
             });
         });
-        req.on('error', reject);
+        req.on('error', (e) => resolve({ ok: false, error: e.message }));
         req.write(postData);
         req.end();
     });
@@ -50,7 +50,6 @@ module.exports = async (req, res) => {
                     ? `@${cb.from.username}` 
                     : `${cb.from.first_name} (ID: ${boosterId})`;
 
-                // Прямой GET-запрос к Google Таблице (идентично send-order.js)
                 const payloadString = encodeURIComponent(JSON.stringify({
                     action: 'take',
                     orderNumber: orderNumber,
@@ -61,12 +60,27 @@ module.exports = async (req, res) => {
                     method: 'GET'
                 });
 
-                const sheetRes = await googleResponse.json();
+                const rawText = await googleResponse.text();
+                let sheetRes;
+                try {
+                    sheetRes = JSON.parse(rawText);
+                } catch (e) {
+                    await tgRequest('answerCallbackQuery', {
+                        callback_query_id: cb.id,
+                        text: '⚠️ Google вернул не JSON. Отчёт отправлен в личку.',
+                        show_alert: true
+                    });
+                    await tgRequest('sendMessage', {
+                        chat_id: ADMIN_ID,
+                        text: `🛠 Ошибка ответа таблицы при взятии заказа #${orderNumber}:\n${rawText.slice(0, 300)}`
+                    });
+                    return res.status(200).send('OK');
+                }
 
                 if (!sheetRes || !sheetRes.success) {
                     await tgRequest('answerCallbackQuery', {
                         callback_query_id: cb.id,
-                        text: `⚠️ ${sheetRes?.error || 'Не удалось взять заказ'}`,
+                        text: `⚠️ ${sheetRes?.error || 'Заказ не найден'}`,
                         show_alert: true
                     });
                     return res.status(200).send('OK');
@@ -102,7 +116,7 @@ module.exports = async (req, res) => {
 
                 await tgRequest('answerCallbackQuery', {
                     callback_query_id: cb.id,
-                    text: '✅ Заказ ваш! Данные аккаунта отправлены вам в личку.',
+                    text: '✅ Заказ ваш! Данные аккаунта отправлены в личку.',
                     show_alert: true
                 });
 
@@ -116,7 +130,7 @@ module.exports = async (req, res) => {
         if (req.body && req.body.callback_query) {
             await tgRequest('answerCallbackQuery', {
                 callback_query_id: req.body.callback_query.id,
-                text: `❌ Ошибка: ${error.message}`,
+                text: `❌ Сбой: ${error.message}`,
                 show_alert: true
             });
         }
