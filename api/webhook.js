@@ -38,8 +38,10 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const update = req.body;
-        if (update && update.callback_query) {
+        // Надёжно читаем тело запроса, даже если Vercel передал его как строку
+        const update = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+
+        if (update.callback_query) {
             const cb = update.callback_query;
             const data = cb.data || '';
 
@@ -67,12 +69,12 @@ module.exports = async (req, res) => {
                 } catch (e) {
                     await tgRequest('answerCallbackQuery', {
                         callback_query_id: cb.id,
-                        text: '⚠️ Google вернул не JSON. Отчёт отправлен в личку.',
+                        text: '⚠️ Таблица вернула не JSON. Отчёт отправлен в личку.',
                         show_alert: true
                     });
                     await tgRequest('sendMessage', {
                         chat_id: ADMIN_ID,
-                        text: `🛠 Ошибка ответа таблицы при взятии заказа #${orderNumber}:\n${rawText.slice(0, 300)}`
+                        text: `🛠 Ошибка таблицы при взятии заказа #${orderNumber}:\n${rawText.slice(0, 300)}`
                     });
                     return res.status(200).send('OK');
                 }
@@ -127,14 +129,12 @@ module.exports = async (req, res) => {
             }
         }
     } catch (error) {
-        if (req.body && req.body.callback_query) {
-            await tgRequest('answerCallbackQuery', {
-                callback_query_id: req.body.callback_query.id,
-                text: `❌ Сбой: ${error.message}`,
-                show_alert: true
-            });
-        }
+        await tgRequest('sendMessage', {
+            chat_id: ADMIN_ID,
+            text: `❌ Критическая ошибка webhook.js: ${error.message}`
+        });
     }
 
     return res.status(200).send('OK');
 };
+
