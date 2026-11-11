@@ -64,7 +64,7 @@ function postToGoogleSheets(payload, targetUrl = GOOGLE_SCRIPT_URL, isRedirect =
 module.exports = async (req, res) => {
     if (req.method !== 'POST') return res.status(200).send('OK');
 
-    try {
+        try {
         const update = req.body;
         if (update && update.callback_query) {
             const cb = update.callback_query;
@@ -72,13 +72,11 @@ module.exports = async (req, res) => {
 
             if (data.startsWith('take_')) {
                 const orderNumber = data.replace('take_', '');
-
                 const boosterId = cb.from.id;
                 const boosterName = cb.from.username 
                     ? `@${cb.from.username}` 
                     : `${cb.from.first_name} (ID: ${boosterId})`;
 
-                // Забираем данные из Google Таблицы и фиксируем бустера
                 const sheetRes = await postToGoogleSheets({
                     action: 'take',
                     orderNumber: orderNumber,
@@ -88,7 +86,7 @@ module.exports = async (req, res) => {
                 if (!sheetRes || !sheetRes.success) {
                     await tgRequest('answerCallbackQuery', {
                         callback_query_id: cb.id,
-                        text: `⚠️ ${sheetRes?.error || 'Не удалось взять заказ'}`,
+                        text: `⚠️ ${sheetRes?.error || 'Ошибка ответа от Google Таблицы'}`,
                         show_alert: true
                     });
                     return res.status(200).send('OK');
@@ -107,7 +105,6 @@ module.exports = async (req, res) => {
 `└ <b>Пароль:</b> <code>${o.password}</code>\n\n` +
 `📸 <i>Не забудьте сделать скриншот аккаунта ДО начала игр и ПОСЛЕ завершения!</i>`;
 
-                // Отправляем логин и пароль строго в личку бустеру
                 const sendRes = await tgRequest('sendMessage', {
                     chat_id: boosterId,
                     text: privateDetails,
@@ -129,7 +126,6 @@ module.exports = async (req, res) => {
                     show_alert: true
                 });
 
-                // Полностью удаляем карточку из общего чата
                 await tgRequest('deleteMessage', {
                     chat_id: cb.message.chat.id,
                     message_id: cb.message.message_id
@@ -137,8 +133,15 @@ module.exports = async (req, res) => {
             }
         }
     } catch (error) {
-        console.error('Webhook error:', error);
+        if (req.body && req.body.callback_query) {
+            await tgRequest('answerCallbackQuery', {
+                callback_query_id: req.body.callback_query.id,
+                text: `❌ Сбой сервера: ${error.message}`,
+                show_alert: true
+            });
+        }
     }
+
 
     return res.status(200).send('OK');
 };
