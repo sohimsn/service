@@ -75,15 +75,15 @@ function sendPhotoToTg(chatId, base64Data, caption) {
     });
 }
 
-function postToGoogleSheets(payload, targetUrl = GOOGLE_SCRIPT_URL) {
+function postToGoogleSheets(payload, targetUrl = GOOGLE_SCRIPT_URL, isRedirect = false) {
     return new Promise((resolve, reject) => {
-        const postData = JSON.stringify(payload);
+        const postData = isRedirect ? '' : JSON.stringify(payload);
         const parsedUrl = new URL(targetUrl);
         const options = {
             hostname: parsedUrl.hostname,
             path: parsedUrl.pathname + parsedUrl.search,
-            method: 'POST',
-            headers: {
+            method: isRedirect ? 'GET' : 'POST',
+            headers: isRedirect ? {} : {
                 'Content-Type': 'application/json',
                 'Content-Length': Buffer.byteLength(postData)
             }
@@ -91,19 +91,20 @@ function postToGoogleSheets(payload, targetUrl = GOOGLE_SCRIPT_URL) {
 
         const req = https.request(options, (res) => {
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                return resolve(postToGoogleSheets(payload, res.headers.location));
+                return resolve(postToGoogleSheets(payload, res.headers.location, true));
             }
             let body = '';
             res.on('data', (chunk) => { body += chunk; });
             res.on('end', () => {
-                try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
+                try { resolve(JSON.parse(body)); } catch (e) { reject(new Error('Google HTML error')); }
             });
         });
         req.on('error', reject);
-        req.write(postData);
+        if (!isRedirect) req.write(postData);
         req.end();
     });
 }
+
 
 module.exports = async (req, res) => {
     if (req.method !== 'POST') {
