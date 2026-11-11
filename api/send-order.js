@@ -91,6 +91,7 @@ module.exports = async (req, res) => {
             }
         }
 
+        // Прямой GET-запрос к Google Apps Script (исключает редирект 302 и ошибку 405)
         const payloadString = encodeURIComponent(JSON.stringify({
             action: 'create',
             route,
@@ -107,13 +108,17 @@ module.exports = async (req, res) => {
             method: 'GET'
         });
 
-        const sheetRes = await googleResponse.json();
-
-
-
+        const rawText = await googleResponse.text();
+        let sheetRes;
+        try {
+            sheetRes = JSON.parse(rawText);
+        } catch (e) {
+            const cleanError = rawText.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim().slice(0, 150);
+            return res.status(500).json({ success: false, error: 'Google вернул: ' + cleanError });
+        }
 
         if (!sheetRes || !sheetRes.success) {
-            return res.status(500).json({ success: false, error: 'Ошибка записи в Google Таблицу' });
+            return res.status(500).json({ success: false, error: sheetRes?.error || 'Ошибка записи в Google Таблицу' });
         }
 
         const orderNumber = sheetRes.orderNumber;
