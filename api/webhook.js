@@ -1,7 +1,9 @@
 const https = require('https');
 
 const BOT_TOKEN = '9207077949:AAGH1qKVUPZf5s3rgOk0T-sDQhBXXUg3o4Y';
-const GOOGLE_SCRIPT_URL = 'https://google.com';
+// ВСТАВЬ СЮДА СВОЙ ПОЛНЫЙ URL ИЗ api/send-order.js (между кавычками):
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwb5Vmc1-O0rkLNCylyTrxbSPO5m1XyYh9UUe1jwHMUs2eW9KMzWEiU0bkenWJY5Lb6eQ/exec';
+
 
 function tgRequest(method, payload) {
     return new Promise((resolve, reject) => {
@@ -48,7 +50,7 @@ module.exports = async (req, res) => {
                     ? `@${cb.from.username}` 
                     : `${cb.from.first_name} (ID: ${boosterId})`;
 
-                // Используем встроенный fetch, который мгновенно проходит редиректы Google без зависаний
+                // Прямой GET-запрос к Google Таблице (идентично send-order.js)
                 const payloadString = encodeURIComponent(JSON.stringify({
                     action: 'take',
                     orderNumber: orderNumber,
@@ -61,12 +63,10 @@ module.exports = async (req, res) => {
 
                 const sheetRes = await googleResponse.json();
 
-
-
                 if (!sheetRes || !sheetRes.success) {
                     await tgRequest('answerCallbackQuery', {
                         callback_query_id: cb.id,
-                        text: `⚠️ ${sheetRes?.error || 'Не удалось найти заказ в таблице'}`,
+                        text: `⚠️ ${sheetRes?.error || 'Не удалось взять заказ'}`,
                         show_alert: true
                     });
                     return res.status(200).send('OK');
@@ -102,7 +102,7 @@ module.exports = async (req, res) => {
 
                 await tgRequest('answerCallbackQuery', {
                     callback_query_id: cb.id,
-                    text: '✅ Заказ ваш! Данные аккаунта отправлены в личку.',
+                    text: '✅ Заказ ваш! Данные аккаунта отправлены вам в личку.',
                     show_alert: true
                 });
 
@@ -116,7 +116,7 @@ module.exports = async (req, res) => {
         if (req.body && req.body.callback_query) {
             await tgRequest('answerCallbackQuery', {
                 callback_query_id: req.body.callback_query.id,
-                text: `❌ Сбой: ${error.message}`,
+                text: `❌ Ошибка: ${error.message}`,
                 show_alert: true
             });
         }
