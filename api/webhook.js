@@ -49,17 +49,26 @@ module.exports = async (req, res) => {
                     : `${cb.from.first_name} (ID: ${boosterId})`;
 
                 // Используем встроенный fetch, который мгновенно проходит редиректы Google без зависаний
-                const googleResponse = await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({
-                        action: 'take',
-                        orderNumber: orderNumber,
-                        boosterName: boosterName
-                    })
-                });
+             let googleResponse = await fetch(GOOGLE_SCRIPT_URL, {
+                 method: 'POST',
+                 redirect: 'manual',
+                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                 body: JSON.stringify({
+                     action: 'take',
+                     orderNumber: orderNumber,
+                     boosterName: boosterName
+                 })
+             });
 
-                const sheetRes = await googleResponse.json();
+             if (googleResponse.status >= 300 && googleResponse.status < 400) {
+                 const redirectUrl = googleResponse.headers.get('location');
+                 if (redirectUrl) {
+                     googleResponse = await fetch(redirectUrl, { method: 'GET' });
+                 }
+             }
+
+             const sheetRes = await googleResponse.json();
+
 
                 if (!sheetRes || !sheetRes.success) {
                     await tgRequest('answerCallbackQuery', {

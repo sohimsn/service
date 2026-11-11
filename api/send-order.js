@@ -91,9 +91,9 @@ module.exports = async (req, res) => {
             }
         }
 
-        const googleResponse = await fetch(GOOGLE_SCRIPT_URL, {
+        let googleResponse = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
-            redirect: 'follow',
+            redirect: 'manual',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({
                 action: 'create',
@@ -108,15 +108,23 @@ module.exports = async (req, res) => {
             })
         });
 
+        // Если Google выдал редирект (302), забираем результат правильным GET-запросом
+        if (googleResponse.status >= 300 && googleResponse.status < 400) {
+            const redirectUrl = googleResponse.headers.get('location');
+            if (redirectUrl) {
+                googleResponse = await fetch(redirectUrl, { method: 'GET' });
+            }
+        }
+
         const rawText = await googleResponse.text();
         let sheetRes;
         try {
             sheetRes = JSON.parse(rawText);
         } catch (e) {
-            // Если Google вернул HTML с ошибкой — выводим её суть в окно
             const cleanError = rawText.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim().slice(0, 150);
             return res.status(500).json({ success: false, error: 'Ответ Google: ' + cleanError });
         }
+
 
 
         if (!sheetRes || !sheetRes.success) {
