@@ -93,6 +93,7 @@ module.exports = async (req, res) => {
 
         const googleResponse = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
+            redirect: 'follow',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({
                 action: 'create',
@@ -107,7 +108,16 @@ module.exports = async (req, res) => {
             })
         });
 
-        const sheetRes = await googleResponse.json();
+        const rawText = await googleResponse.text();
+        let sheetRes;
+        try {
+            sheetRes = JSON.parse(rawText);
+        } catch (e) {
+            // Если Google вернул HTML с ошибкой — выводим её суть в окно
+            const cleanError = rawText.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim().slice(0, 150);
+            return res.status(500).json({ success: false, error: 'Ответ Google: ' + cleanError });
+        }
+
 
         if (!sheetRes || !sheetRes.success) {
             return res.status(500).json({ success: false, error: 'Ошибка записи в Google Таблицу' });
