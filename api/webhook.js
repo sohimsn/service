@@ -71,7 +71,8 @@ module.exports = async (req, res) => {
             const data = cb.data || '';
 
             if (data.startsWith('take_')) {
-                const orderNumber = data.split('_');
+                const orderNumber = data.replace('take_', '');
+
                 const boosterId = cb.from.id;
                 const boosterName = cb.from.username 
                     ? `@${cb.from.username}` 
