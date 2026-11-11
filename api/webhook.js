@@ -72,6 +72,11 @@ module.exports = async (req, res) => {
 
             if (data.startsWith('take_')) {
                 const orderNumber = data.replace('take_', '');
+                if (data.startsWith('take_')) {
+                const orderNumber = data.replace('take_', '');
+                await tgRequest('answerCallbackQuery', { callback_query_id: cb.id, text: '✅ Связь с Vercel есть! Заказ #' + orderNumber, show_alert: true });
+                return res.status(200).send('OK');
+
                 const boosterId = cb.from.id;
                 const boosterName = cb.from.username 
                     ? `@${cb.from.username}` 
