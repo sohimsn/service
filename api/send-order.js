@@ -1,17 +1,16 @@
+const https = require('https');
+
 const BOT_TOKEN = '9207077949:AAGH1qKVUPZf5s3rgOk0T-sDQhBXXUg3o4Y';
 const CHAT_ID = '-5225091937';
 
-module.exports = async (req, res) => {
-    // Разрешаем только POST запросы
+module.exports = (req, res) => {
     if (req.method !== 'POST') {
         return res.status(405).json({ success: false, message: 'Method not allowed' });
     }
 
-    try {
-        const { id, server, method, login, password, route, price } = req.body;
+    const { id, server, method, login, password, route, price } = req.body || {};
 
-        // Формируем красивую карточку заказа для бустеров
-        const messageText = 
+    const messageText = 
 `📦 <b>ПОСТУПИЛ НОВЫЙ ЗАКАЗ НА БУСТ!</b>\n\n` +
 `🗺 <b>Маршрут:</b> ${route}\n` +
 `💰 <b>Стоимость:</b> <code>${price}</code>\n\n` +
@@ -23,27 +22,45 @@ module.exports = async (req, res) => {
 `└ <b>Пароль:</b> <code>${password}</code>\n\n` +
 `⚡️ <i>Бустеры, кто берет заказ — отпишитесь админу!</i>`;
 
-        // Отправляем через официальное API Telegram
-        const telegramUrl = `https://telegram.org{BOT_TOKEN}/sendMessage`;
-        const response = await fetch(telegramUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: CHAT_ID,
-                text: messageText,
-                parse_mode: 'HTML'
-            })
-        });
+    const postData = JSON.stringify({
+        chat_id: CHAT_ID,
+        text: messageText,
+        parse_mode: 'HTML'
+    });
 
-        const data = await response.json();
-
-        if (data.ok) {
-            return res.status(200).json({ success: true, message: 'Заказ успешно отправлен!' });
-        } else {
-            return res.status(500).json({ success: false, error: data.description });
+    const options = {
+        hostname: 'api.telegram.org',
+        port: 443,
+        path: `/bot${BOT_TOKEN}/sendMessage`,
+        method: 'POST',
+        family: 4, // Принудительный IPv4 для стабильной связи с Telegram
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
         }
+    };
 
-    } catch (error) {
+    const request = https.request(options, (response) => {
+        let body = '';
+        response.on('data', (chunk) => { body += chunk; });
+        response.on('end', () => {
+            try {
+                const data = JSON.parse(body);
+                if (data.ok) {
+                    return res.status(200).json({ success: true, message: 'Заказ успешно отправлен!' });
+                } else {
+                    return res.status(500).json({ success: false, error: data.description });
+                }
+            } catch (e) {
+                return res.status(500).json({ success: false, error: 'Ошибка ответа Telegram' });
+            }
+        });
+    });
+
+    request.on('error', (error) => {
         return res.status(500).json({ success: false, error: error.message });
-    }
+    });
+
+    request.write(postData);
+    request.end();
 };
