@@ -1015,10 +1015,7 @@
 
         // Шаг 2: Отправка заказа и чека после нажатия "Я оплатил"
         function submitFullOrder() {
-            if (!compressedReceiptBase64) {
-                alert("⚠️ Пожалуйста, прикрепите скриншот чека об оплате!");
-                return;
-            }
+            
 
             const btn = document.getElementById('confirm-pay-btn');
             btn.disabled = true;
