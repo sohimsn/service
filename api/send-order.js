@@ -3,7 +3,7 @@ const https = require('https');
 const BOT_TOKEN = '9207077949:AAGH1qKVUPZf5s3rgOk0T-sDQhBXXUg3o4Y';
 const BOOSTERS_CHAT_ID = '-5225091937';
 const ADMIN_ID = '1482409914';
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyy1r4w3KroQjixKvGUGJ5wpxLnxw4RoAW2n3zzeiEDZwIkcVy5KtEv9_E9zy9BkiYf1g/exec';
+const GOOGLE_SCRIPT_URL = 'https://google.com';
 
 function tgRequest(method, payload) {
     return new Promise((resolve, reject) => {
@@ -35,7 +35,7 @@ function tgRequest(method, payload) {
 function sendPhotoToTg(chatId, base64Data, caption) {
     return new Promise((resolve) => {
         if (!base64Data || !base64Data.includes('base64,')) return resolve(null);
-        const base64Clean = base64Data.split('base64,');
+        const base64Clean = base64Data.split('base64,').pop();
         const imgBuffer = Buffer.from(base64Clean, 'base64');
         const boundary = '----WebKitFormBoundary' + Math.random().toString(16).slice(2);
 
@@ -75,37 +75,6 @@ function sendPhotoToTg(chatId, base64Data, caption) {
     });
 }
 
-function postToGoogleSheets(payload, targetUrl = GOOGLE_SCRIPT_URL, isRedirect = false) {
-    return new Promise((resolve, reject) => {
-        const postData = isRedirect ? '' : JSON.stringify(payload);
-        const parsedUrl = new URL(targetUrl);
-        const options = {
-            hostname: parsedUrl.hostname,
-            path: parsedUrl.pathname + parsedUrl.search,
-            method: isRedirect ? 'GET' : 'POST',
-            headers: isRedirect ? {} : {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(postData)
-            }
-        };
-
-        const req = https.request(options, (res) => {
-            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                return resolve(postToGoogleSheets(payload, res.headers.location, true));
-            }
-            let body = '';
-            res.on('data', (chunk) => { body += chunk; });
-            res.on('end', () => {
-                try { resolve(JSON.parse(body)); } catch (e) { reject(new Error('Google HTML error')); }
-            });
-        });
-        req.on('error', reject);
-        if (!isRedirect) req.write(postData);
-        req.end();
-    });
-}
-
-
 module.exports = async (req, res) => {
     if (req.method !== 'POST') {
         return res.status(405).json({ success: false, message: 'Method not allowed' });
@@ -114,7 +83,6 @@ module.exports = async (req, res) => {
     try {
         const { id, server, method, login, password, route, price, receiptImage, clientUserId } = req.body || {};
 
-        // 1. Сохраняем скриншот чека в Telegram (чтобы получить ссылку для таблицы)
         let receiptInfo = 'Без скриншота';
         if (receiptImage) {
             const msgId = await sendPhotoToTg(ADMIN_ID, receiptImage, `🧾 Чек к новому заказу (${route} — ${price})`);
@@ -123,18 +91,23 @@ module.exports = async (req, res) => {
             }
         }
 
-        // 2. Записываем заказ в Google Таблицу и получаем строгий порядковый номер (#1, #2...)
-        const sheetRes = await postToGoogleSheets({
-            action: 'create',
-            route,
-            price,
-            id,
-            server,
-            method,
-            login,
-            password,
-            receiptUrl: receiptInfo
+        const googleResponse = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+                action: 'create',
+                route,
+                price,
+                id,
+                server,
+                method,
+                login,
+                password,
+                receiptUrl: receiptInfo
+            })
         });
+
+        const sheetRes = await googleResponse.json();
 
         if (!sheetRes || !sheetRes.success) {
             return res.status(500).json({ success: false, error: 'Ошибка записи в Google Таблицу' });
@@ -142,7 +115,6 @@ module.exports = async (req, res) => {
 
         const orderNumber = sheetRes.orderNumber;
 
-        // 3. Кидаем чистую карточку БЕЗ паролей в общий чат бустеров
         const boosterText = 
 `🔥 <b>НОВЫЙ ЗАКАЗ #${orderNumber}</b>\n\n` +
 `🗺 <b>Маршрут:</b> ${route}\n` +
@@ -155,12 +127,15 @@ module.exports = async (req, res) => {
             parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [[
-                    { text: '⚡ Взять заказ', callback_data: `take_${orderNumber}` }
+                    { 
+                        text: '⚡ Взять заказ', 
+                        callback_data: `take_${orderNumber}`,
+                        style: 'success'
+                    }
                 ]]
             }
         });
 
-        // 4. Дублируем официальный чек клиенту в личку от бота (если клиент запускал бота)
         if (clientUserId) {
             const clientReceipt = 
 `🧾 <b>ЭЛЕКТРОННЫЙ ЧЕК #${orderNumber}</b>\n\n` +
