@@ -3,7 +3,7 @@ const https = require('https');
 const BOT_TOKEN = '9207077949:AAGH1qKVUPZf5s3rgOk0T-sDQhBXXUg3o4Y';
 const BOOSTERS_CHAT_ID = '-5225091937';
 const ADMIN_ID = '1482409914';
-const GOOGLE_SCRIPT_URL = 'https://google.com' + 'AKfycbwb5Vmc1-O0rkLNCylyTrxbSPO5m1XyYh9UUe1jwHMUs2eW9KMzWEiU0bkenWJY5Lb6eQ/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwb5Vmc1-O0rkLNCylyTrxbSPO5m1XyYh9UUe1jwHMUs2eW9KMzWEiU0bkenWJY5Lb6eQ/exec';
 
 function tgRequest(method, payload) {
     return new Promise((resolve, reject) => {
