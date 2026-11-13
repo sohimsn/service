@@ -1,6 +1,7 @@
 const https = require('https');
 
 const BOT_TOKEN = '9207077949:AAGH1qKVUPZf5s3rgOk0T-sDQhBXXUg3o4Y';
+const ADMIN_ID = '1482409914';
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwb5Vmc1-O0rkLNCylyTrxbSPO5m1XyYh9UUe1jwHMUs2eW9KMzWEiU0bkenWJY5Lb6eQ/exec';
 
 function tgRequest(method, payload) {
@@ -53,16 +54,18 @@ module.exports = async (req, res) => {
     try {
         const update = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
 
+        // 1. Обработка нажатий на кнопки
         if (update.callback_query) {
             const cb = update.callback_query;
             const data = cb.data || '';
+            const boosterId = cb.from.id;
+            const boosterName = cb.from.username 
+                ? `@${cb.from.username}` 
+                : `${cb.from.first_name} (ID: ${boosterId})`;
 
+            // Бустер забирает заказ из общего чата
             if (data.startsWith('take_')) {
                 const orderNumber = data.replace('take_', '');
-                const boosterId = cb.from.id;
-                const boosterName = cb.from.username 
-                    ? `@${cb.from.username}` 
-                    : `${cb.from.first_name} (ID: ${boosterId})`;
 
                 const payloadString = encodeURIComponent(JSON.stringify({
                     action: 'take',
@@ -75,7 +78,7 @@ module.exports = async (req, res) => {
                 if (!sheetRes || !sheetRes.success) {
                     await tgRequest('answerCallbackQuery', {
                         callback_query_id: cb.id,
-                        text: `⚠️ ${sheetRes?.error || 'Не удалось получить заказ из таблицы'}`,
+                        text: `⚠️ ${sheetRes?.error || 'Не удалось получить заказ'}`,
                         show_alert: true
                     });
                     return res.status(200).send('OK');
@@ -92,12 +95,21 @@ module.exports = async (req, res) => {
 `├ <b>Платформа:</b> <b>${o.method}</b>\n` +
 `├ <b>Логин:</b> <code>${o.login}</code>\n` +
 `└ <b>Пароль:</b> <code>${o.password}</code>\n\n` +
-`📸 <i>Не забудьте сделать скриншот аккаунта ДО начала игр и ПОСЛЕ завершения!</i>`;
+`📸 <i>Сделайте скриншот ДО начала игр и ПОСЛЕ достижения ранга. Когда закончите — нажмите кнопку ниже:</i>`;
 
                 const sendRes = await tgRequest('sendMessage', {
                     chat_id: boosterId,
                     text: privateDetails,
-                    parse_mode: 'HTML'
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [[
+                            { 
+                                text: `✅ Сдать заказ #${orderNumber}`, 
+                                callback_data: `done_${orderNumber}`,
+                                style: 'success'
+                            }
+                        ]]
+                    }
                 });
 
                 if (!sendRes.ok) {
@@ -120,15 +132,74 @@ module.exports = async (req, res) => {
                     message_id: cb.message.message_id
                 });
             }
+
+            // Бустер нажал "Сдать заказ" в своей личке
+            if (data.startsWith('done_')) {
+                const orderNumber = data.replace('done_', '');
+
+                await tgRequest('answerCallbackQuery', {
+                    callback_query_id: cb.id,
+                    text: '📸 Отправьте скриншот результата в ответ на следующее сообщение!'
+                });
+
+                await tgRequest('sendMessage', {
+                    chat_id: boosterId,
+                    text: `📸 <b>Сдача заказа #${orderNumber}</b>\n\nПрикрепите скриншот финального ранга ответом (Reply) на это сообщение:`,
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        force_reply: true,
+                        input_field_placeholder: 'Прикрепите скриншот...'
+                    }
+                });
+            }
         }
+
+        // 2. Обработка присланного скриншота от бустера в личке
+        if (update.message && update.message.photo && update.message.reply_to_message) {
+            const replyText = update.message.reply_to_message.text || '';
+            const match = replyText.match(/Сдача заказа #(\d+)/);
+
+            if (match) {
+                const orderNumber = match[1];
+                const boosterId = update.message.from.id;
+                const boosterName = update.message.from.username 
+                    ? `@${update.message.from.username}` 
+                    : `${update.message.from.first_name} (ID: ${boosterId})`;
+
+                const photoArray = update.message.photo;
+                const bestPhotoId = photoArray[photoArray.length - 1].file_id;
+
+                // Пересылаем скриншот главному админу
+                const adminPhotoRes = await tgRequest('sendPhoto', {
+                    chat_id: ADMIN_ID,
+                    photo: bestPhotoId,
+                    caption: `🏆 <b>ЗАКАЗ #${orderNumber} ВЫПОЛНЕН!</b>\n\n👤 <b>Бустер:</b> ${boosterName}\n📸 <i>Скриншот финального ранга прикреплён.</i>`,
+                    parse_mode: 'HTML'
+                });
+
+                const reportNote = adminPhotoRes.ok 
+                    ? `Скрин у админа (ID: ${adminPhotoRes.result.message_id})` 
+                    : 'Скриншот загружен';
+
+                // Обновляем статус в Google Таблице на "Выполнен"
+                const payloadString = encodeURIComponent(JSON.stringify({
+                    action: 'complete',
+                    orderNumber: orderNumber,
+                    reportInfo: reportNote
+                }));
+                await httpsGetJson(`${GOOGLE_SCRIPT_URL}?payload=${payloadString}`);
+
+                // Подтверждаем бустеру
+                await tgRequest('sendMessage', {
+                    chat_id: boosterId,
+                    text: `🎉 <b>Отчёт по заказу #${orderNumber} принят!</b>\n\nСтатус заказа обновлён на «Выполнен». Выплата переведена в очередь на расчёт.`,
+                    parse_mode: 'HTML'
+                });
+            }
+        }
+
     } catch (error) {
-        if (req.body && req.body.callback_query) {
-            await tgRequest('answerCallbackQuery', {
-                callback_query_id: req.body.callback_query.id,
-                text: '❌ Ошибка: ' + error.message,
-                show_alert: true
-            });
-        }
+        console.error('Webhook error:', error);
     }
 
     return res.status(200).send('OK');
