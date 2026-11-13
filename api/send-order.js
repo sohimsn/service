@@ -3,8 +3,8 @@ const https = require('https');
 const BOT_TOKEN = '9207077949:AAGH1qKVUPZf5s3rgOk0T-sDQhBXXUg3o4Y';
 const BOOSTERS_CHAT_ID = '-5225091937';
 const ADMIN_ID = '1482409914';
+// ВСТАВЬ СЮДА СВОЙ РАБОЧИЙ URL ИЗ ТЕКУЩЕГО send-order.js:
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwb5Vmc1-O0rkLNCylyTrxbSPO5m1XyYh9UUe1jwHMUs2eW9KMzWEiU0bkenWJY5Lb6eQ/exec';
-
 
 function tgRequest(method, payload) {
     return new Promise((resolve, reject) => {
@@ -92,7 +92,7 @@ module.exports = async (req, res) => {
             }
         }
 
-        // Прямой GET-запрос к Google Apps Script (исключает редирект 302 и ошибку 405)
+        // Записываем заказ в Google Таблицу для учета
         const payloadString = encodeURIComponent(JSON.stringify({
             action: 'create',
             route,
@@ -109,23 +109,21 @@ module.exports = async (req, res) => {
             method: 'GET'
         });
 
-        const rawText = await googleResponse.text();
-        let sheetRes;
-        try {
-            sheetRes = JSON.parse(rawText);
-        } catch (e) {
-            const cleanError = rawText.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim().slice(0, 150);
-            return res.status(500).json({ success: false, error: 'Google вернул: ' + cleanError });
-        }
-
+        const sheetRes = await googleResponse.json();
         if (!sheetRes || !sheetRes.success) {
-            return res.status(500).json({ success: false, error: sheetRes?.error || 'Ошибка записи в Google Таблицу' });
+            return res.status(500).json({ success: false, error: sheetRes?.error || 'Ошибка записи в таблицу' });
         }
 
         const orderNumber = sheetRes.orderNumber;
 
+        // Кодируем данные аккаунта в скрытый ключ для мгновенной выдачи бустеру
+        const secretData = Buffer.from(JSON.stringify({
+            n: orderNumber, r: route, p: price, i: id, s: server, m: method, l: login, pw: password
+        })).toString('base64');
+
+        // Карточка в чат бустеров (данные спрятаны в невидимой ссылке &#8203;)
         const boosterText = 
-`🔥 <b>НОВЫЙ ЗАКАЗ #${orderNumber}</b>\n\n` +
+`🔥 <b>НОВЫЙ ЗАКАЗ #${orderNumber}</b><a href="https://t.me{encodeURIComponent(secretData)}">&#8203;</a>\n\n` +
 `🗺 <b>Маршрут:</b> ${route}\n` +
 `💰 <b>Стоимость:</b> <code>${price}</code>\n\n` +
 `👇 <i>Нажмите кнопку ниже, чтобы забрать заказ и получить данные в личку:</i>`;
@@ -134,6 +132,7 @@ module.exports = async (req, res) => {
             chat_id: BOOSTERS_CHAT_ID,
             text: boosterText,
             parse_mode: 'HTML',
+            disable_web_page_preview: true,
             reply_markup: {
                 inline_keyboard: [[
                     { 
