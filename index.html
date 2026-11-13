@@ -994,12 +994,12 @@
         }
 
         // Шаг 1: Переход из анкеты в окно оплаты
+        let statusPollingInterval = null;
+
         function startPayment() {
             if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
             document.getElementById('order-modal').classList.remove('active');
             document.getElementById('pay-modal-amount').innerText = document.getElementById('modal-price-text').innerText;
-            document.getElementById('receipt-file').value = '';
-            compressedReceiptBase64 = "";
             document.getElementById('payment-modal').classList.add('active');
         }
 
@@ -1009,17 +1009,65 @@
         }
 
         function closeReceiptModal() {
+            if (statusPollingInterval) clearInterval(statusPollingInterval);
             document.getElementById('receipt-modal').classList.remove('active');
             document.getElementById('modal-overlay').classList.remove('active');
         }
 
-        // Шаг 2: Отправка заказа и чека после нажатия "Я оплатил"
-        function submitFullOrder() {
-            
+        function updateProgressUI(status) {
+            if (status === 'В работе') {
+                document.getElementById('tracking-badge').innerText = 'В работе';
+                document.getElementById('tracking-badge').style.background = 'rgba(74, 222, 128, 0.15)';
+                document.getElementById('tracking-badge').style.color = '#4ade80';
 
+                document.getElementById('bar-step-2').style.background = '#4ade80';
+                document.getElementById('bar-step-3').style.background = '#d4af37';
+
+                document.getElementById('step-icon-2').innerText = '✔';
+                document.getElementById('step-icon-2').style.color = '#4ade80';
+                document.getElementById('step-title-2').style.color = '#ffffff';
+                document.getElementById('step-title-2').innerText = 'Бустер назначен';
+
+                document.getElementById('step-row-3').style.opacity = '1';
+                document.getElementById('step-title-3').style.color = '#d4af37';
+            } else if (status === 'Выполнен') {
+                document.getElementById('tracking-badge').innerText = 'Выполнен';
+                document.getElementById('bar-step-2').style.background = '#4ade80';
+                document.getElementById('bar-step-3').style.background = '#4ade80';
+                document.getElementById('bar-step-4').style.background = '#4ade80';
+
+                document.getElementById('step-row-3').style.opacity = '1';
+                document.getElementById('step-icon-3').innerText = '✔';
+                document.getElementById('step-icon-3').style.color = '#4ade80';
+                document.getElementById('step-title-3').style.color = '#ffffff';
+
+                document.getElementById('step-row-4').style.opacity = '1';
+                document.getElementById('step-icon-4').innerText = '✔';
+                document.getElementById('step-icon-4').style.color = '#4ade80';
+                document.getElementById('step-title-4').style.color = '#4ade80';
+
+                if (statusPollingInterval) clearInterval(statusPollingInterval);
+            }
+        }
+
+        function startOrderTracking(orderNumber) {
+            if (statusPollingInterval) clearInterval(statusPollingInterval);
+            statusPollingInterval = setInterval(() => {
+                fetch(`/api/check-status?order=${orderNumber}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success && data.status) {
+                            updateProgressUI(data.status);
+                        }
+                    })
+                    .catch(() => {});
+            }, 5000);
+        }
+
+        function submitFullOrder() {
             const btn = document.getElementById('confirm-pay-btn');
             btn.disabled = true;
-            btn.innerText = "Проверяем и оформляем...";
+            btn.innerText = "Проводим оплату...";
             btn.style.opacity = '0.5';
 
             const clientUserId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : null;
@@ -1032,7 +1080,7 @@
                 password: document.getElementById('player-password').value.trim(),
                 route: document.getElementById('sheet-order-info').innerText,
                 price: document.getElementById('modal-price-text').innerText,
-                receiptImage: compressedReceiptBase64,
+                receiptImage: "",
                 clientUserId: clientUserId
             };
 
@@ -1045,22 +1093,38 @@
             .then(data => {
                 if (data.success) {
                     document.getElementById('payment-modal').classList.remove('active');
-                    document.getElementById('receipt-order-num').innerText = `#${data.orderNumber}`;
+                    document.getElementById('receipt-order-num').innerText = `Заказ #${data.orderNumber}`;
                     document.getElementById('receipt-route').innerText = orderData.route;
                     document.getElementById('receipt-price').innerText = orderData.price;
                     document.getElementById('receipt-account').innerText = `${orderData.id} (${orderData.server})`;
+
+                    document.getElementById('tracking-badge').innerText = 'Поиск бустера';
+                    document.getElementById('tracking-badge').style.background = 'rgba(212, 175, 55, 0.15)';
+                    document.getElementById('tracking-badge').style.color = '#d4af37';
+                    document.getElementById('bar-step-2').style.background = '#d4af37';
+                    document.getElementById('bar-step-3').style.background = 'rgba(255,255,255,0.12)';
+                    document.getElementById('bar-step-4').style.background = 'rgba(255,255,255,0.12)';
+                    document.getElementById('step-icon-2').innerText = '⏳';
+                    document.getElementById('step-icon-2').style.color = '#d4af37';
+                    document.getElementById('step-title-2').innerText = 'Подбираем свободного бустера';
+                    document.getElementById('step-title-2').style.color = '#d4af37';
+                    document.getElementById('step-row-3').style.opacity = '0.45';
+                    document.getElementById('step-row-4').style.opacity = '0.45';
+
                     document.getElementById('receipt-modal').classList.add('active');
+                    startOrderTracking(data.orderNumber);
                 } else {
                     alert("❌ Ошибка оформления: " + data.error);
                 }
             })
-            .catch(() => alert("❌ Ошибка сети при отправке чека."))
+            .catch(() => alert("❌ Ошибка сети при оформлении заказа."))
             .finally(() => {
                 btn.disabled = false;
-                btn.innerText = "Я оплатил";
+                btn.innerText = "Оплатить заказ";
                 btn.style.opacity = '1';
             });
         }
+
 
 
 
@@ -1191,51 +1255,88 @@
         </button>
     </div>
     <!-- ОКНО ОПЛАТЫ -->
+        <!-- ОКНО ОПЛАТЫ (ЗАГЛУШКА ПОД ШЛЮЗ) -->
     <div id="payment-modal" class="center-modal">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h3 class="modal-title" style="margin: 0; text-align: left;">Оплата заказа</h3>
             <button onclick="closePaymentModal()" style="background: none; border: none; color: #6c84a6; font-size: 26px; font-weight: bold; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
         </div>
 
-        <div style="background: rgba(212, 175, 55, 0.08); border: 1px solid rgba(212, 175, 55, 0.25); border-radius: 14px; padding: 14px; margin-bottom: 16px; text-align: left;">
-            <div style="font-size: 12px; color: #6c84a6; margin-bottom: 4px;">К оплате:</div>
-            <div id="pay-modal-amount" style="font-size: 22px; font-weight: 900; color: #d4af37; margin-bottom: 12px;">0 ₽</div>
-            
-            <div style="font-size: 12px; color: #6c84a6; margin-bottom: 4px;">Реквизиты для перевода (СБП / Карта):</div>
-            <div style="font-size: 15px; font-weight: 700; color: #ffffff; user-select: all;">+7 (999) 000-00-00 (Т-Банк)</div>
-            <div style="font-size: 11px; color: #8aa1c7; margin-top: 4px;">Нажмите на номер, чтобы скопировать</div>
+        <div style="background: rgba(212, 175, 55, 0.08); border: 1px solid rgba(212, 175, 55, 0.25); border-radius: 14px; padding: 16px; margin-bottom: 18px; text-align: left;">
+            <div style="font-size: 12px; color: #6c84a6; margin-bottom: 4px;">Итого к оплате:</div>
+            <div id="pay-modal-amount" style="font-size: 24px; font-weight: 900; color: #d4af37; margin-bottom: 8px;">0 ₽</div>
+            <div style="font-size: 12px; color: #8aa1c7;">Платёжный шлюз в тестовом режиме. Нажмите кнопку ниже для мгновенного подтверждения оплаты.</div>
         </div>
 
-        <div class="input-group">
-            <label class="input-label">Прикрепите скриншот чека об оплате</label>
-            <input type="file" id="receipt-file" accept="image/*" class="sheet-input" style="padding: 10px; font-size: 13px;" onchange="handleReceiptUpload(this)">
-        </div>
-
-        <button id="confirm-pay-btn" class="action-btn" style="margin-top: 15px;" onclick="submitFullOrder()">
-            Я оплатил
+        <button id="confirm-pay-btn" class="action-btn" onclick="submitFullOrder()">
+            Оплатить заказ
         </button>
     </div>
 
-    <!-- ОКНО ЭЛЕКТРОННОГО ЧЕКА КЛИЕНТА -->
+    <!-- ЭКРАН ТРЕКИНГА ЗАКАЗА (ПРОГРЕСС-БАР В СТИЛЕ ЯНДЕКС ДОСТАВКИ) -->
     <div id="receipt-modal" class="center-modal">
-        <div style="text-align: center; margin-bottom: 15px;">
-            <div style="font-size: 38px; margin-bottom: 8px;">🧾</div>
-            <h3 class="modal-title" style="margin: 0; color: #d4af37;">Заказ оформлен!</h3>
-            <p style="font-size: 12px; color: #6c84a6; margin: 6px 0 0 0;">Сохраните скриншот этого чека для поддержки</p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div>
+                <div style="font-size: 12px; color: #6c84a6;">Отслеживание заказа</div>
+                <h3 id="receipt-order-num" class="modal-title" style="margin: 2px 0 0 0; text-align: left; color: #d4af37;">Заказ #1</h3>
+            </div>
+            <span id="tracking-badge" style="background: rgba(212, 175, 55, 0.15); color: #d4af37; font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 20px;">Поиск бустера</span>
         </div>
 
-        <div style="background: rgba(18, 26, 41, 0.9); border: 1px dashed rgba(212, 175, 55, 0.4); border-radius: 14px; padding: 16px; text-align: left; font-size: 13px; line-height: 1.7; color: #ffffff;">
-            <div>Номер чека: <strong id="receipt-order-num" style="color: #d4af37; font-size: 16px;">#1</strong></div>
-            <div>Услуга: <strong id="receipt-route">-</strong></div>
-            <div>Оплачено: <strong id="receipt-price" style="color: #d4af37;">-</strong></div>
-            <div>Аккаунт: <strong id="receipt-account">-</strong></div>
-            <div>Статус: <span style="color: #4ade80; font-weight: 700;">Передан бустерам</span></div>
+        <!-- Полоса прогресса -->
+        <div style="display: flex; gap: 6px; margin-bottom: 18px;">
+            <div id="bar-step-1" style="height: 5px; flex: 1; background: #4ade80; border-radius: 4px;"></div>
+            <div id="bar-step-2" style="height: 5px; flex: 1; background: #d4af37; border-radius: 4px; transition: background 0.4s;"></div>
+            <div id="bar-step-3" style="height: 5px; flex: 1; background: rgba(255,255,255,0.12); border-radius: 4px; transition: background 0.4s;"></div>
+            <div id="bar-step-4" style="height: 5px; flex: 1; background: rgba(255,255,255,0.12); border-radius: 4px; transition: background 0.4s;"></div>
         </div>
 
-        <button class="action-btn" style="margin-top: 18px;" onclick="closeReceiptModal()">
-            Отлично, закрыть
+        <!-- Список шагов -->
+        <div style="background: rgba(18, 26, 41, 0.9); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 14px; text-align: left; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <span style="color: #4ade80; font-size: 16px;">✔</span>
+                <div>
+                    <div style="font-size: 13px; font-weight: 700; color: #ffffff;">Заказ оплачен и оформлен</div>
+                    <div style="font-size: 11px; color: #6c84a6;">Чек сформирован в системе</div>
+                </div>
+            </div>
+
+            <div id="step-row-2" style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <span id="step-icon-2" style="color: #d4af37; font-size: 16px;">⏳</span>
+                <div>
+                    <div id="step-title-2" style="font-size: 13px; font-weight: 700; color: #d4af37;">Подбираем свободного бустера</div>
+                    <div style="font-size: 11px; color: #6c84a6;">Обычно занимает от 1 до 5 минут</div>
+                </div>
+            </div>
+
+            <div id="step-row-3" style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; opacity: 0.45; transition: opacity 0.4s;">
+                <span id="step-icon-3" style="color: #ffffff; font-size: 16px;">🎮</span>
+                <div>
+                    <div id="step-title-3" style="font-size: 13px; font-weight: 700; color: #ffffff;">Бустер приступил к работе</div>
+                    <div style="font-size: 11px; color: #6c84a6;">Выполнение буста на аккаунте</div>
+                </div>
+            </div>
+
+            <div id="step-row-4" style="display: flex; align-items: center; gap: 10px; opacity: 0.45; transition: opacity 0.4s;">
+                <span id="step-icon-4" style="color: #ffffff; font-size: 16px;">🏆</span>
+                <div>
+                    <div id="step-title-4" style="font-size: 13px; font-weight: 700; color: #ffffff;">Заказ выполнен</div>
+                    <div style="font-size: 11px; color: #6c84a6;">Целевой ранг достигнут</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Краткий чек -->
+        <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 10px 14px; text-align: left; font-size: 12px; color: #8aa1c7; line-height: 1.6;">
+            <div>Услуга: <strong id="receipt-route" style="color: #ffffff;">-</strong></div>
+            <div>Аккаунт: <strong id="receipt-account" style="color: #ffffff;">-</strong> • Сумма: <strong id="receipt-price" style="color: #d4af37;">-</strong></div>
+        </div>
+
+        <button class="action-btn" style="margin-top: 14px; background: rgba(255,255,255,0.08); color: #ffffff;" onclick="closeReceiptModal()">
+            Свернуть окно
         </button>
     </div>
+
 
 
 
