@@ -69,7 +69,7 @@ module.exports = async (req, res) => {
                     return res.status(200).send('OK');
                 }
 
-                const encodedData = decodeURIComponent(linkEntity.url.split('url=')[1]);
+                const encodedData = decodeURIComponent(linkEntity.url.split('url=').pop());
                 const o = JSON.parse(Buffer.from(encodedData, 'base64').toString('utf-8'));
 
                 const privateDetails = 
@@ -122,8 +122,15 @@ module.exports = async (req, res) => {
             }
         }
     } catch (error) {
-        console.error('Webhook error:', error);
+    if (req.body && req.body.callback_query) {
+        await tgRequest('answerCallbackQuery', {
+            callback_query_id: req.body.callback_query.id,
+            text: '❌ Ошибка: ' + error.message,
+            show_alert: true
+        });
     }
+}
+
 
     return res.status(200).send('OK');
 };
