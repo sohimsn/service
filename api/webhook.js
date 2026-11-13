@@ -2,8 +2,7 @@ const https = require('https');
 
 const BOT_TOKEN = '9207077949:AAGH1qKVUPZf5s3rgOk0T-sDQhBXXUg3o4Y';
 // ВСТАВЬ СЮДА СВОЙ РАБОЧИЙ URL ИЗ send-order.js:
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwb5Vmc1-O0rkLNCylyTrxbSPO5m1XyYh9UUe1jwHMUs2eW9KMzWEiU0bkenWJY5Lb6eQ/exec';
-
+const GOOGLE_SCRIPT_URL = 'https://google.com';
 
 function tgRequest(method, payload) {
     return new Promise((resolve) => {
@@ -23,21 +22,20 @@ function tgRequest(method, payload) {
             let body = '';
             res.on('data', (chunk) => { body += chunk; });
             res.on('end', () => {
-                try { resolve(JSON.parse(body)); } catch (e) { resolve({ ok: false }); }
+                try { resolve(JSON.parse(body)); } catch (e) { resolve({ ok: false, raw: body }); }
             });
         });
-        req.on('error', () => resolve({ ok: false }));
+        req.on('error', (e) => resolve({ ok: false, err: e.message }));
         req.write(postData);
         req.end();
     });
 }
 
 module.exports = async (req, res) => {
-    // При открытии ссылки в браузере сервер сам привяжет Webhook к Telegram
     if (req.method !== 'POST') {
+        const webhookUrl = 'https://' + 'service-1-two.vercel.app' + '/api/webhook';
         const setupRes = await tgRequest('setWebhook', {
-            url: url: 'https://' + 'service-1-two.vercel.app/api/webhook',
-,
+            url: webhookUrl,
             allowed_updates: ['message', 'callback_query'],
             drop_pending_updates: true
         });
@@ -57,14 +55,13 @@ module.exports = async (req, res) => {
                     ? `@${cb.from.username}` 
                     : `${cb.from.first_name} (ID: ${boosterId})`;
 
-                // Достаём скрытый ключ с данными прямо из сущностей сообщения
                 const entities = cb.message.entities || [];
                 const linkEntity = entities.find(e => e.type === 'text_link' && e.url.includes('url='));
 
                 if (!linkEntity) {
                     await tgRequest('answerCallbackQuery', {
                         callback_query_id: cb.id,
-                        text: '⚠️ Устаревший формат заказа. Создайте новый заказ для теста.',
+                        text: '⚠️ Создайте новый тестовый заказ в приложении, чтобы проверить кнопку.',
                         show_alert: true
                     });
                     return res.status(200).send('OK');
@@ -85,7 +82,6 @@ module.exports = async (req, res) => {
 `└ <b>Пароль:</b> <code>${o.pw}</code>\n\n` +
 `📸 <i>Не забудьте сделать скриншот аккаунта ДО начала игр и ПОСЛЕ завершения!</i>`;
 
-                // 1. Мгновенно отправляем логин и пароль в личку бустеру
                 const sendRes = await tgRequest('sendMessage', {
                     chat_id: boosterId,
                     text: privateDetails,
@@ -101,7 +97,6 @@ module.exports = async (req, res) => {
                     return res.status(200).send('OK');
                 }
 
-                // 2. Показываем бустеру уведомление и удаляем карточку из общего чата
                 await tgRequest('answerCallbackQuery', {
                     callback_query_id: cb.id,
                     text: '✅ Заказ ваш! Данные аккаунта отправлены вам в личку.',
@@ -113,7 +108,6 @@ module.exports = async (req, res) => {
                     message_id: cb.message.message_id
                 });
 
-                // 3. В фоне обновляем статус в Google Таблице на "В работе"
                 const payloadString = encodeURIComponent(JSON.stringify({
                     action: 'take',
                     orderNumber: o.n,
@@ -123,15 +117,14 @@ module.exports = async (req, res) => {
             }
         }
     } catch (error) {
-    if (req.body && req.body.callback_query) {
-        await tgRequest('answerCallbackQuery', {
-            callback_query_id: req.body.callback_query.id,
-            text: '❌ Ошибка: ' + error.message,
-            show_alert: true
-        });
+        if (req.body && req.body.callback_query) {
+            await tgRequest('answerCallbackQuery', {
+                callback_query_id: req.body.callback_query.id,
+                text: '❌ Ошибка: ' + error.message,
+                show_alert: true
+            });
+        }
     }
-}
-
 
     return res.status(200).send('OK');
 };
