@@ -75,6 +75,25 @@ function sendPhotoToTg(chatId, base64Data, caption) {
     });
 }
 
+function httpsGetJson(targetUrl) {
+    return new Promise((resolve, reject) => {
+        https.get(targetUrl, { family: 4 }, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                return resolve(httpsGetJson(res.headers.location));
+            }
+            let body = '';
+            res.on('data', (chunk) => { body += chunk; });
+            res.on('end', () => {
+                try {
+                    resolve(JSON.parse(body));
+                } catch (e) {
+                    reject(new Error('Ошибка ответа Google: ' + body.slice(0, 100)));
+                }
+            });
+        }).on('error', reject);
+    });
+}
+
 module.exports = async (req, res) => {
     if (req.method !== 'POST') {
         return res.status(405).json({ success: false, message: 'Method not allowed' });
@@ -103,11 +122,7 @@ module.exports = async (req, res) => {
             receiptUrl: receiptInfo
         }));
 
-        const googleResponse = await fetch(`${GOOGLE_SCRIPT_URL}?payload=${payloadString}`, {
-            method: 'GET'
-        });
-
-        const sheetRes = await googleResponse.json();
+        const sheetRes = await httpsGetJson(`${GOOGLE_SCRIPT_URL}?payload=${payloadString}`);
         if (!sheetRes || !sheetRes.success) {
             return res.status(500).json({ success: false, error: sheetRes?.error || 'Ошибка записи в таблицу' });
         }
