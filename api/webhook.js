@@ -1,8 +1,7 @@
 const https = require('https');
 
 const BOT_TOKEN = '9207077949:AAGH1qKVUPZf5s3rgOk0T-sDQhBXXUg3o4Y';
-// ВСТАВЬ СЮДА СВОЙ РАБОЧИЙ URL ИЗ send-order.js:
-const GOOGLE_SCRIPT_URL = 'https://google.com';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwb5Vmc1-O0rkLNCylyTrxbSPO5m1XyYh9UUe1jwHMUs2eW9KMzWEiU0bkenWJY5Lb6eQ/exec';
 
 function tgRequest(method, payload) {
     return new Promise((resolve) => {
@@ -22,24 +21,33 @@ function tgRequest(method, payload) {
             let body = '';
             res.on('data', (chunk) => { body += chunk; });
             res.on('end', () => {
-                try { resolve(JSON.parse(body)); } catch (e) { resolve({ ok: false, raw: body }); }
+                try { resolve(JSON.parse(body)); } catch (e) { resolve({ ok: false }); }
             });
         });
-        req.on('error', (e) => resolve({ ok: false, err: e.message }));
+        req.on('error', () => resolve({ ok: false }));
         req.write(postData);
         req.end();
     });
 }
 
+function httpsGetJson(targetUrl) {
+    return new Promise((resolve, reject) => {
+        https.get(targetUrl, { family: 4 }, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                return resolve(httpsGetJson(res.headers.location));
+            }
+            let body = '';
+            res.on('data', (chunk) => { body += chunk; });
+            res.on('end', () => {
+                try { resolve(JSON.parse(body)); } catch (e) { reject(new Error('Ошибка ответа таблицы')); }
+            });
+        }).on('error', reject);
+    });
+}
+
 module.exports = async (req, res) => {
     if (req.method !== 'POST') {
-        const webhookUrl = 'https://' + 'service-1-two.vercel.app' + '/api/webhook';
-        const setupRes = await tgRequest('setWebhook', {
-            url: webhookUrl,
-            allowed_updates: ['message', 'callback_query'],
-            drop_pending_updates: true
-        });
-        return res.status(200).json(setupRes);
+        return res.status(200).send('OK');
     }
 
     try {
@@ -50,36 +58,40 @@ module.exports = async (req, res) => {
             const data = cb.data || '';
 
             if (data.startsWith('take_')) {
+                const orderNumber = data.replace('take_', '');
                 const boosterId = cb.from.id;
                 const boosterName = cb.from.username 
                     ? `@${cb.from.username}` 
                     : `${cb.from.first_name} (ID: ${boosterId})`;
 
-                const entities = cb.message.entities || [];
-                const linkEntity = entities.find(e => e.type === 'text_link' && e.url.includes('url='));
+                const payloadString = encodeURIComponent(JSON.stringify({
+                    action: 'take',
+                    orderNumber: orderNumber,
+                    boosterName: boosterName
+                }));
 
-                if (!linkEntity) {
+                const sheetRes = await httpsGetJson(`${GOOGLE_SCRIPT_URL}?payload=${payloadString}`);
+
+                if (!sheetRes || !sheetRes.success) {
                     await tgRequest('answerCallbackQuery', {
                         callback_query_id: cb.id,
-                        text: '⚠️ Создайте новый тестовый заказ в приложении, чтобы проверить кнопку.',
+                        text: `⚠️ ${sheetRes?.error || 'Не удалось получить заказ из таблицы'}`,
                         show_alert: true
                     });
                     return res.status(200).send('OK');
                 }
 
-                const encodedData = decodeURIComponent(linkEntity.url.split('url=').pop());
-                const o = JSON.parse(Buffer.from(encodedData, 'base64').toString('utf-8'));
-
+                const o = sheetRes.order;
                 const privateDetails = 
-`🔐 <b>ЗАКАЗ #${o.n} — ДАННЫЕ ДЛЯ ВХОДА</b>\n\n` +
-`🗺 <b>Маршрут:</b> ${o.r}\n` +
-`💰 <b>Стоимость:</b> <code>${o.p}</code>\n\n` +
+`🔐 <b>ЗАКАЗ #${orderNumber} — ДАННЫЕ ДЛЯ ВХОДА</b>\n\n` +
+`🗺 <b>Маршрут:</b> ${o.route}\n` +
+`💰 <b>Стоимость:</b> <code>${o.price}</code>\n\n` +
 `👤 <b>Аккаунт клиента:</b>\n` +
-`├ <b>ID игрока:</b> <code>${o.i}</code>\n` +
-`├ <b>Сервер:</b> <code>${o.s}</code>\n` +
-`├ <b>Платформа:</b> <b>${o.m}</b>\n` +
-`├ <b>Логин:</b> <code>${o.l}</code>\n` +
-`└ <b>Пароль:</b> <code>${o.pw}</code>\n\n` +
+`├ <b>ID игрока:</b> <code>${o.id}</code>\n` +
+`├ <b>Сервер:</b> <code>${o.server}</code>\n` +
+`├ <b>Платформа:</b> <b>${o.method}</b>\n` +
+`├ <b>Логин:</b> <code>${o.login}</code>\n` +
+`└ <b>Пароль:</b> <code>${o.password}</code>\n\n` +
 `📸 <i>Не забудьте сделать скриншот аккаунта ДО начала игр и ПОСЛЕ завершения!</i>`;
 
                 const sendRes = await tgRequest('sendMessage', {
@@ -107,13 +119,6 @@ module.exports = async (req, res) => {
                     chat_id: cb.message.chat.id,
                     message_id: cb.message.message_id
                 });
-
-                const payloadString = encodeURIComponent(JSON.stringify({
-                    action: 'take',
-                    orderNumber: o.n,
-                    boosterName: boosterName
-                }));
-                await fetch(`${GOOGLE_SCRIPT_URL}?payload=${payloadString}`, { method: 'GET' }).catch(() => {});
             }
         }
     } catch (error) {
