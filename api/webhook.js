@@ -36,7 +36,8 @@ module.exports = async (req, res) => {
     // При открытии ссылки в браузере сервер сам привяжет Webhook к Telegram
     if (req.method !== 'POST') {
         const setupRes = await tgRequest('setWebhook', {
-            url: 'https://vercel.app',
+            url: url: 'https://' + 'service-1-two.vercel.app/api/webhook',
+,
             allowed_updates: ['message', 'callback_query'],
             drop_pending_updates: true
         });
