@@ -1008,10 +1008,22 @@
             document.getElementById('modal-overlay').classList.remove('active');
         }
 
+        let statusPollingInterval = null;
+        let currentActiveOrder = null;
+
         function closeReceiptModal() {
-            if (statusPollingInterval) clearInterval(statusPollingInterval);
             document.getElementById('receipt-modal').classList.remove('active');
             document.getElementById('modal-overlay').classList.remove('active');
+            if (currentActiveOrder) {
+                document.getElementById('floating-order-bar').style.display = 'flex';
+            }
+        }
+
+        function reopenTrackingModal() {
+            if (!currentActiveOrder) return;
+            document.getElementById('floating-order-bar').style.display = 'none';
+            document.getElementById('modal-overlay').classList.add('active');
+            document.getElementById('receipt-modal').classList.add('active');
         }
 
         function updateProgressUI(status) {
@@ -1030,6 +1042,12 @@
 
                 document.getElementById('step-row-3').style.opacity = '1';
                 document.getElementById('step-title-3').style.color = '#d4af37';
+
+                // Обновляем нижнюю плавающую плашку
+                document.getElementById('float-icon').innerText = '🎮';
+                document.getElementById('float-status').innerText = 'Бустер приступил к работе';
+                document.getElementById('float-status').style.color = '#4ade80';
+
             } else if (status === 'Выполнен') {
                 document.getElementById('tracking-badge').innerText = 'Выполнен';
                 document.getElementById('bar-step-2').style.background = '#4ade80';
@@ -1046,13 +1064,20 @@
                 document.getElementById('step-icon-4').style.color = '#4ade80';
                 document.getElementById('step-title-4').style.color = '#4ade80';
 
+                document.getElementById('float-icon').innerText = '🏆';
+                document.getElementById('float-status').innerText = 'Заказ выполнен!';
+                document.getElementById('float-status').style.color = '#4ade80';
+
+                localStorage.removeItem('ghost_active_order');
                 if (statusPollingInterval) clearInterval(statusPollingInterval);
             }
         }
 
         function startOrderTracking(orderNumber) {
+            currentActiveOrder = orderNumber;
             if (statusPollingInterval) clearInterval(statusPollingInterval);
-            statusPollingInterval = setInterval(() => {
+
+            const checkNow = () => {
                 fetch(`/api/check-status?order=${orderNumber}`)
                     .then(r => r.json())
                     .then(data => {
@@ -1061,7 +1086,10 @@
                         }
                     })
                     .catch(() => {});
-            }, 5000);
+            };
+
+            checkNow();
+            statusPollingInterval = setInterval(checkNow, 4000);
         }
 
         function submitFullOrder() {
@@ -1092,25 +1120,16 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
+                    const savedOrder = {
+                        num: data.orderNumber,
+                        route: orderData.route,
+                        price: orderData.price,
+                        account: `${orderData.id} (${orderData.server})`
+                    };
+                    localStorage.setItem('ghost_active_order', JSON.stringify(savedOrder));
+
                     document.getElementById('payment-modal').classList.remove('active');
-                    document.getElementById('receipt-order-num').innerText = `Заказ #${data.orderNumber}`;
-                    document.getElementById('receipt-route').innerText = orderData.route;
-                    document.getElementById('receipt-price').innerText = orderData.price;
-                    document.getElementById('receipt-account').innerText = `${orderData.id} (${orderData.server})`;
-
-                    document.getElementById('tracking-badge').innerText = 'Поиск бустера';
-                    document.getElementById('tracking-badge').style.background = 'rgba(212, 175, 55, 0.15)';
-                    document.getElementById('tracking-badge').style.color = '#d4af37';
-                    document.getElementById('bar-step-2').style.background = '#d4af37';
-                    document.getElementById('bar-step-3').style.background = 'rgba(255,255,255,0.12)';
-                    document.getElementById('bar-step-4').style.background = 'rgba(255,255,255,0.12)';
-                    document.getElementById('step-icon-2').innerText = '⏳';
-                    document.getElementById('step-icon-2').style.color = '#d4af37';
-                    document.getElementById('step-title-2').innerText = 'Подбираем свободного бустера';
-                    document.getElementById('step-title-2').style.color = '#d4af37';
-                    document.getElementById('step-row-3').style.opacity = '0.45';
-                    document.getElementById('step-row-4').style.opacity = '0.45';
-
+                    fillTrackingModal(savedOrder);
                     document.getElementById('receipt-modal').classList.add('active');
                     startOrderTracking(data.orderNumber);
                 } else {
@@ -1124,6 +1143,28 @@
                 btn.style.opacity = '1';
             });
         }
+
+        function fillTrackingModal(savedOrder) {
+            document.getElementById('receipt-order-num').innerText = `Заказ #${savedOrder.num}`;
+            document.getElementById('float-title').innerText = `Заказ #${savedOrder.num} • ${savedOrder.route}`;
+            document.getElementById('receipt-route').innerText = savedOrder.route;
+            document.getElementById('receipt-price').innerText = savedOrder.price;
+            document.getElementById('receipt-account').innerText = savedOrder.account;
+        }
+
+        // Восстанавливаем плашку активного заказа при повторном входе в Mini App
+        window.addEventListener('DOMContentLoaded', () => {
+            const raw = localStorage.getItem('ghost_active_order');
+            if (raw) {
+                try {
+                    const savedOrder = JSON.parse(raw);
+                    fillTrackingModal(savedOrder);
+                    document.getElementById('floating-order-bar').style.display = 'flex';
+                    startOrderTracking(savedOrder.num);
+                } catch (e) {}
+            }
+        });
+
 
 
 
@@ -1335,6 +1376,19 @@
         <button class="action-btn" style="margin-top: 14px; background: rgba(255,255,255,0.08); color: #ffffff;" onclick="closeReceiptModal()">
             Свернуть окно
         </button>
+    </div>
+    <!-- ПЛАВАЮЩАЯ ПЛАШКА АКТИВНОГО ЗАКАЗА (КАК В ЯНДЕКС ДОСТАВКЕ) -->
+    <div id="floating-order-bar" onclick="reopenTrackingModal()" style="display: none; position: fixed; bottom: 16px; left: 16px; right: 16px; background: rgba(18, 26, 41, 0.96); border: 1px solid rgba(212, 175, 55, 0.45); border-radius: 16px; padding: 12px 16px; z-index: 900; box-shadow: 0 10px 30px rgba(0,0,0,0.6); cursor: pointer; align-items: center; justify-content: space-between; backdrop-filter: blur(10px);">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="float-icon" style="font-size: 20px;">⏳</span>
+            <div style="text-align: left;">
+                <div id="float-title" style="font-size: 13px; font-weight: 800; color: #ffffff;">Заказ #1</div>
+                <div id="float-status" style="font-size: 11px; color: #d4af37; font-weight: 600;">Подбираем бустера...</div>
+            </div>
+        </div>
+        <div style="background: rgba(212, 175, 55, 0.15); color: #d4af37; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 10px;">
+            Открыть
+        </div>
     </div>
 
 
